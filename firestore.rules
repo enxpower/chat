@@ -1,90 +1,53 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() { return request.auth != null; }
-    function self(uid) { return signedIn() && request.auth.uid == uid; }
-    function now() { return request.time; }
 
-    // 用户档案
+    function isAuth() { return request.auth != null; }
+
+    // ===== 用户档案（可选：仅本人可写）=====
     match /users/{uid} {
-      allow read: if true;
-      allow create: if self(request.resource.data.uid);
-      allow update: if self(uid)
-        && !('roles' in request.resource.data)
-        && !('blocked' in request.resource.data)
-        && !('mutedUntil' in request.resource.data);
+      allow read: if isAuth();
+      allow create, update: if isAuth() && request.auth.uid == uid;
       allow delete: if false;
     }
 
-    // 昵称占用表（全局唯一）
+    // ===== 昵称占用表（全局唯一）=====
     match /nicknames/{name} {
       allow read: if true;
-      allow create: if signedIn()
-        && request.resource.data.uid == request.auth.uid
-        && !exists(resource.path);
-      allow delete: if self(resource.data.uid);
-      allow update: if false;
-    }
-
-    // 公聊消息（单房间）
-    match /messages/{msgId} {
-      allow read: if true;
-      allow create: if signedIn() && canSend();
-      allow update: if signedIn()
-        && request.auth.uid == resource.data.from.uid
-        && now() < resource.data.createdAt + duration.value(120, 's')
-        && isSoftEdit(resource.data, request.resource.data);
-      allow delete: if false;
-    }
-
-    // 私聊线程与消息（threadId = uidA_uidB 升序）
-    match /dmThreads/{threadId} {
-      allow read, create: if signedIn() && isParticipantNew(threadId, request);
+      // 只要已认证即可创建；不可覆盖已有文档
+      allow create: if isAuth() && !exists(resource.path);
       allow update, delete: if false;
+    }
 
-      match /messages/{msgId} {
-        allow read: if signedIn() && isParticipant(threadId);
-        allow create: if signedIn() && isParticipant(threadId) && canSend();
-        allow update: if signedIn()
-          && request.auth.uid == resource.data.from.uid
-          && now() < resource.data.createdAt + duration.value(120, 's')
-          && isSoftEdit(resource.data, request.resource.data);
-        allow delete: if false;
+    // ===== 公聊消息（频道 #general）=====
+    match /messages/{msgId} {
+      allow read: if true;           // 任何人可读（也可改成 isAuth()）
+      allow create: if isAuth();     // 匿名登录即可发
+      allow update, delete: if false;
+    }
+
+    // ===== 私聊线程 =====
+    // 仅参与者可读写子消息（后端强制“仅双方可见”）
+    function dmParticipants(tid) {
+      return get(/databases/$(database)/documents/dmThreads/$(tid)).data.participants;
+    }
+    function inDm(tid) {
+      return isAuth() && (request.auth.uid in dmParticipants(tid));
+    }
+
+    match /dmThreads/{tid} {
+      // 允许任何已认证用户创建线程文档（前端会写 participants: [uid1, uid2]）
+      allow create: if isAuth();
+      // 只有参与者能读取线程文档本身
+      allow read: if inDm(tid);
+
+      // 线程下的消息
+      match /messages/{mid} {
+        // 只有参与者能看并能发
+        allow read: if inDm(tid);
+        allow create: if inDm(tid);
+        allow update, delete: if false;
       }
-    }
-
-    // （可选）正在输入标记
-    match /typing/{channelKey}/{uid} {
-      allow read: if signedIn();
-      allow create, update, delete: if self(uid);
-    }
-
-    // ===== helpers =====
-    function canSend() {
-      let u = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-      return !u.blocked && (!( 'mutedUntil' in u ) || u.mutedUntil <= now());
-    }
-
-    function isSoftEdit(old, nu) {
-      return (nu.recalled == old.recalled || nu.recalled == true || nu.recalled == false)
-          && (nu.deleted  == old.deleted  || nu.deleted  == true || nu.deleted  == false)
-          && nu.from == old.from
-          && nu.to == old.to
-          && nu.isPrivate == old.isPrivate
-          && nu.text == old.text
-          && nu.mentions == old.mentions
-          && nu.imageUrl == old.imageUrl
-          && nu.createdAt == old.createdAt;
-    }
-
-    function isParticipant(threadId) {
-      let t = get(/databases/$(database)/documents/dmThreads/$(threadId)).data;
-      return request.auth.uid in t.participants;
-    }
-
-    function isParticipantNew(threadId, req) {
-      return req.resource.data.participants.size() == 2
-          && request.auth.uid in req.resource.data.participants;
     }
   }
 }
