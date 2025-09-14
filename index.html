@@ -13,52 +13,45 @@
     }
     *{box-sizing:border-box}
     html,body{height:100%}
-    body{margin:0;font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,"Noto Sans",sans-serif;color:var(--fg);background:var(--bg)}
-    header{padding:14px 18px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:9}
+    body{margin:0;font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,"Noto Sans",sans-serif;color:var(--fg);background:#f8fafc}
+    header{padding:14px 18px;border-bottom:1px solid var(--line);background:#fff;position:sticky;top:0;z-index:9}
     .brand{font-size:16px;font-weight:700}
     .wrap{display:grid;grid-template-columns:280px 1fr;gap:16px;padding:16px;max-width:1200px;margin:0 auto}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+    .card{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
     .left{padding:14px;display:flex;flex-direction:column;gap:12px;height:calc(100vh - 110px)}
     .me{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;border:1px dashed var(--line);border-radius:12px;padding:10px;background:#fbfbfb}
     .me .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .tag{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:2px 8px;color:var(--muted);background:#fff}
-    .male{color:var(--male)} .female{color:var(--female)} .unset{color:var(--unset)}
+    .tag{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:2px 8px;color:#6b7280;background:#fff}
+    .male{color:#2563eb} .female{color:#d946ef} .unset{color:#64748b}
     .ipt{width:100%;border:1px solid var(--line);border-radius:10px;padding:6px 8px;background:#fff}
     .btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:6px 12px;cursor:pointer}
     .btn.primary{border-color:#111;color:#111;background:#fff}
     .btn:active{transform:translateY(1px)}
     .list{flex:1;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:10px;background:#fafafa}
     .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;margin:4px 6px 4px 0;border:1px solid var(--line);border-radius:999px;background:#fff;cursor:pointer}
-    .pill.sel{outline:2px solid #1112}
-    .badge{font-size:10px;border:1px solid var(--line);border-radius:999px;padding:0 6px;color:var(--muted);background:#fff}
-    .grp{font-size:12px;color:var(--muted);margin:2px 0 6px 2px}
-
+    .badge{font-size:10px;border:1px solid var(--line);border-radius:999px;padding:0 6px;color:#6b7280;background:#fff}
+    .grp{font-size:12px;color:#6b7280;margin:2px 0 6px 2px}
     .right{display:grid;grid-template-rows:auto 1fr auto auto;gap:10px;padding:14px;height:calc(100vh - 110px)}
-    .mode{color:var(--muted);font-size:12px}
+    .mode{color:#6b7280;font-size:12px}
     .msgs{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#ffffff}
     .bubble{margin:10px 12px;max-width:78%}
     .from{font-size:12px;margin-bottom:4px}
     .b{padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#f5f7fb}
     .mebubble .b{background:#eef2ff;border-color:#c7d2fe}
-    .priv{font-size:11px;color:var(--muted);margin-right:6px}
+    .priv{font-size:11px;color:#6b7280;margin-right:6px}
     .row{display:flex;gap:10px;align-items:center}
     textarea{flex:1;min-height:56px;resize:vertical;border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff}
     .chips{display:flex;gap:8px;flex-wrap:wrap}
     .chip{display:inline-flex;align-items:center;gap:6px;border:1px dashed var(--line);border-radius:999px;padding:6px 10px;background:#fff;cursor:pointer}
-    .hint{color:var(--muted);font-size:12px}
-
+    .hint{color:#6b7280;font-size:12px}
     /* Toast */
     .toast{position:fixed;right:16px;top:16px;display:flex;flex-direction:column;gap:8px;z-index:99}
     .toast .t{min-width:260px;max-width:440px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#ffffff;box-shadow:var(--shadow)}
-    .t.err{border-color:#fecaca;background:#fff1f2;color:var(--red)}
-    .t.ok{border-color:#bbf7d0;background:#ecfdf5;color:var(--green)}
+    .t.err{border-color:#fecaca;background:#fff1f2;color:#b91c1c}
+    .t.ok{border-color:#bbf7d0;background:#ecfdf5;color:#065f46}
     a{color:#111;text-decoration:none}
-
     /* 状态条 */
-    .status{position:sticky;top:0;z-index:10;display:flex;gap:8px;align-items:center;
-      margin:10px auto 0;max-width:1200px;padding:8px 12px;border-radius:12px;
-      border:1px solid var(--line);box-shadow:var(--shadow);background:#ffffffcc;
-      backdrop-filter:saturate(180%) blur(8px)}
+    .status{position:sticky;top:0;z-index:10;display:flex;gap:8px;align-items:center;margin:10px auto 0;max-width:1200px;padding:8px 12px;border-radius:12px;border:1px solid var(--line);box-shadow:var(--shadow);background:#ffffffcc;backdrop-filter:saturate(180%) blur(8px)}
     .status .dot{width:8px;height:8px;border-radius:999px;background:#f59e0b;animation:bl 1.2s infinite}
     .status.ok .dot{background:#10b981}
     .status.err .dot{background:#ef4444}
@@ -66,60 +59,43 @@
   </style>
 </head>
 <body>
-  <header>
-    <div class="brand">中文聊天室 · 公聊 + 私聊（打勾）</div>
-  </header>
-
-  <!-- ✅ 就绪状态条 -->
+  <header><div class="brand">中文聊天室 · 公聊 + 私聊（打勾）</div></header>
   <div id="status" class="status"><span class="dot"></span><span id="statusText">正在连接 Firebase…</span></div>
 
   <div class="wrap">
-    <!-- 左侧 -->
     <aside class="card left">
       <div class="me">
         <div class="row" id="meInfo">
           <span>我：<strong id="meNick" class="unset">@guest</strong></span>
           <span id="meRole" class="tag">user</span>
         </div>
-        <div class="row" style="justify-content:flex-end">
-          <button class="btn" id="saveProfile">保存</button>
-        </div>
+        <div class="row" style="justify-content:flex-end"><button class="btn" id="saveProfile">保存</button></div>
         <div class="row">
           <input id="nickInput" class="ipt" placeholder="昵称（唯一，可选）"/>
           <select id="genderInput" class="ipt" style="max-width:120px">
-            <option value="unset">未设置</option>
-            <option value="male">male</option>
-            <option value="female">female</option>
+            <option value="unset">未设置</option><option value="male">male</option><option value="female">female</option>
           </select>
           <button class="btn" id="clearDM">清空私聊对象</button>
         </div>
       </div>
-
       <div class="grp">在线用户</div>
       <div id="users" class="list"></div>
-
       <div class="grp">示例账号（本地，不占后端）</div>
       <div id="samples" class="list" style="min-height:70px"></div>
     </aside>
 
-    <!-- 右侧 -->
     <main class="card right">
       <div id="mode" class="mode">频道：#general（未选人 → 公聊）</div>
-
       <div id="msgs" class="msgs"></div>
-
       <div class="row">
         <label class="hint" style="display:flex;align-items:center;gap:8px">
-          <input id="dmchk" type="checkbox" checked />
-          私聊打勾（勾选=仅双方可见；不勾选=公屏并自动 @）
+          <input id="dmchk" type="checkbox" checked /> 私聊打勾（勾选=仅双方可见；不勾选=公屏并自动 @）
         </label>
       </div>
-
       <div class="row">
         <textarea id="input" placeholder="输入消息…  Enter 发送；Shift+Enter 换行"></textarea>
         <button id="send" class="btn primary">发送</button>
       </div>
-
       <div class="chips">
         <span class="chip" data-at="@系统通知">@系统通知</span>
         <span class="chip" data-at="@管理员A">@管理员A</span>
@@ -130,367 +106,135 @@
 
   <div id="toast" class="toast" aria-live="polite"></div>
 
-  <!-- Firebase v9 CDN -->
   <script type="module">
-    // 读取公开配置
-    async function loadConfig(){
-      const res = await fetch('./firebaseConfig.json',{cache:'no-store'});
-      if(!res.ok) throw new Error('无法读取 firebaseConfig.json');
-      return await res.json();
-    }
+    // 加载配置
+    async function loadConfig(){ const r=await fetch('./firebaseConfig.json',{cache:'no-store'}); if(!r.ok) throw new Error('无法读取 firebaseConfig.json'); return r.json(); }
     const cfg = await loadConfig();
 
-    // SDK
+    // Firebase SDK
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import {
-      getFirestore, serverTimestamp, doc, getDoc, setDoc, addDoc, collection,
-      query, orderBy, onSnapshot
-    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-
-    const app = initializeApp(cfg);
-    const auth = getAuth(app);
-    const db   = getFirestore(app);
+    import { getFirestore, serverTimestamp, doc, getDoc, setDoc, addDoc, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    const app = initializeApp(cfg); const auth = getAuth(app); const db = getFirestore(app);
 
     // DOM
-    const $ = (id)=>document.getElementById(id);
-    const el = {
-      meNick: $('meNick'), meRole:$('meRole'),
-      nickInput:$('nickInput'), genderInput:$('genderInput'),
-      saveProfile:$('saveProfile'), clearDM:$('clearDM'),
-      users:$('users'), samples:$('samples'),
-      msgs:$('msgs'), input:$('input'), send:$('send'),
-      dmchk:$('dmchk'), mode:$('mode'), toast:$('toast')
-    };
+    const $ = id=>document.getElementById(id);
+    const el = { meNick:$('meNick'), meRole:$('meRole'), nickInput:$('nickInput'), genderInput:$('genderInput'), saveProfile:$('saveProfile'), clearDM:$('clearDM'), users:$('users'), samples:$('samples'), msgs:$('msgs'), input:$('input'), send:$('send'), dmchk:$('dmchk'), mode:$('mode'), toast:$('toast') };
 
-    // —— 状态条 —— //
-    const statusBar = document.getElementById('status');
-    const statusText = document.getElementById('statusText');
-    function setStatus(kind, text, autohideMs){
-      statusBar.className = 'status ' + (kind||'');
-      statusText.textContent = text || '';
-      statusBar.style.display = 'flex';
-      if(autohideMs){ setTimeout(()=>{ statusBar.style.display='none'; }, autohideMs); }
-    }
+    // 状态条
+    const statusBar = document.getElementById('status'); const statusText = document.getElementById('statusText');
+    function setStatus(kind,text,hide){ statusBar.className='status '+(kind||''); statusText.textContent=text||''; statusBar.style.display='flex'; if(hide){ setTimeout(()=>statusBar.style.display='none', hide); } }
 
-    // 初始禁用输入（连接成功后启用）
+    // 初始禁用输入
     el.input.disabled = true; el.send.disabled = true;
 
     // 状态
     let me = { uid:null, nickname:'guest', gender:'unset', roles:['user'] };
-    let dmTarget = null;
-    let unsubPublic = null, unsubDM = null;
+    let dmTarget = null; let unsubPublic=null, unsubDM=null;
 
-    // ===== 公聊/私聊订阅与切换 =====
-    function currentTid(){
-      if(!me?.uid || !dmTarget?.uid) return null;
-      const a = me.uid < dmTarget.uid ? me.uid : dmTarget.uid;
-      const b = me.uid < dmTarget.uid ? dmTarget.uid : me.uid;
-      return `${a}_${b}`;
-    }
+    // 工具
+    function toast(text,type='err'){ const t=document.createElement('div'); t.className='t '+(type==='ok'?'ok':'err'); t.textContent=text; el.toast.appendChild(t); setTimeout(()=>t.remove(),2600); }
+    const gcls=g=>g==='male'?'male':(g==='female'?'female':'unset');
+    function renderMe(){ el.meNick.textContent='@'+(me.nickname||'guest'); el.meNick.className=gcls(me.gender||'unset'); el.meRole.textContent=(me.roles||['user']).includes('admin')?'admin':'user'; el.nickInput.value=me.nickname||''; el.genderInput.value=me.gender||'unset'; }
+    function pill(u, selectable=true){ const admin=(u.roles||[]).includes('admin')?'<span class="badge">admin</span>':''; return `<span class="pill ${gcls(u.gender)}" data-uid="${u.uid||''}" data-nick="${u.nickname||''}" data-sel="${selectable?1:0}"><strong>@${u.nickname||'未知'}</strong> ${admin}</span>`; }
+    function bindPills(c){ [...c.querySelectorAll('.pill')].forEach(p=>{ p.onclick=()=>{ const selectable=p.dataset.sel==='1'; const uid=p.dataset.uid, nick=p.dataset.nick; if(!selectable){ const at='@'+nick+' '; if(!el.input.value.startsWith(at)) el.input.value=at+el.input.value; el.dmchk.checked=false; dmTarget=null; switchFeed(); postSystemNotice(`“${nick}”为示例账号，仅用于 @ 演示，不能私聊`); el.input.focus(); return; } if(uid){ dmTarget={uid,nickname:nick}; switchFeed(); } }; }); }
+    function renderUsers(list){ el.users.innerHTML=list.map(pill).join(''); bindPills(el.users); }
+    function renderSamples(){ const demo=[ {nickname:'系统通知',gender:'unset'}, {nickname:'管理员A',gender:'male'}, {nickname:'访客B',gender:'female'} ]; el.samples.innerHTML=demo.map(x=>pill(x,false)).join(''); bindPills(el.samples); }
+    function renderMsg(m){ const mine=me && m.from?.uid===me.uid; const div=document.createElement('div'); div.className='bubble'+(mine?' mebubble':''); const who=`<span class="${gcls(m.from?.gender)}">@${m.from?.nickname||'未知'}</span>`; const scope=m.isPrivate?'<span class="priv">🔒 私聊</span>':''; const body=m.recalled?'<span class="hint">（已撤回）</span>': m.deleted?'<span class="hint">（已删除，仅作者可见）</span>': (m.text||'').replace(/@([\u4e00-\u9fa5\w]+)/g,'<strong>@$1</strong>'); div.innerHTML=`<div class="from">${scope}${who}</div><div class="b">${body}</div>`; el.msgs.appendChild(div); el.msgs.scrollTop=el.msgs.scrollHeight; }
+    async function postSystemNotice(text){ try{ await addDoc(collection(db,'messages'), {from:{uid:'system',nickname:'系统',gender:'unset'}, to:null,isPrivate:false, text:`【系统】${text}`, createdAt:serverTimestamp(),recalled:false,deleted:false}); }catch(_){} }
+    async function claimNicknameAuto(base, uid){ const tryName=async(name)=>{ const r=doc(db,'nicknames',name); const s=await getDoc(r); if(s.exists()) return false; await setDoc(r,{uid}); return true; }; try{ let n=1, final=base, ok=await tryName(final); while(!ok && n<50){ n++; final=`${base}_${n}`; ok=await tryName(final); } return final; }catch(_){ return base; } }
 
-    function startPublic(){
-      if (unsubDM){ unsubDM(); unsubDM=null; }
-      if (unsubPublic) return;
-      el.msgs.innerHTML = '';
-      unsubPublic = onSnapshot(
-        query(collection(db,'messages'), orderBy('createdAt','asc')),
-        snap => { el.msgs.innerHTML=''; snap.forEach(d=>renderMsg(d.data())); },
-        err  => { setStatus('err', '公聊订阅失败：'+(err.code||err.message)); }
-      );
-    }
+    // 订阅与切换
+    function currentTid(){ if(!me?.uid||!dmTarget?.uid) return null; const a=me.uid<dmTarget.uid?me.uid:dmTarget.uid; const b=me.uid<dmTarget.uid?dmTarget.uid:me.uid; return `${a}_${b}`; }
+    function startPublic(){ if(unsubDM){unsubDM();unsubDM=null;} if(unsubPublic) return; el.msgs.innerHTML=''; unsubPublic=onSnapshot(query(collection(db,'messages'),orderBy('createdAt','asc')), s=>{ el.msgs.innerHTML=''; s.forEach(d=>renderMsg(d.data())); }, err=>{ setStatus('err','公聊订阅失败：'+(err.code||err.message)); }); }
 
-    // 预建线程（并返回明确错误）
+    // ✅ 只写不读，避免被 read 规则拦
     async function ensureDmThread(tid){
-      const tRef = doc(db,'dmThreads', tid);
+      const tRef = doc(db,'dmThreads',tid);
       try{
-        const exists = (await getDoc(tRef)).exists();
-        if(!exists){
-          await setDoc(tRef, { participants: [me.uid, dmTarget.uid] }, { merge:true });
-        }
+        await setDoc(tRef, { participants:[me.uid, dmTarget.uid] }, { merge:true });
         return { ok:true };
       }catch(e){
-        return { ok:false, code:e.code || 'unknown', msg:e.message || String(e) };
+        return { ok:false, code:e.code||'unknown', msg:e.message||String(e) };
       }
     }
-
-    function diagnoseDmError(code, msg, phase){
-      let reason = '';
+    function diagnoseDmError(code,msg,phase){
+      let reason='';
       switch(code){
-        case 'permission-denied':
-          reason = 'Rules 拒绝。检查：是否使用“仅参与者可读写 dmThreads/*/messages”的规则；participants 是否包含双方 UID。'; break;
-        case 'unavailable':
-          reason = '网络或 Firestore 暂不可用（离线/超时）。'; break;
-        case 'not-found':
-          reason = '线程不存在且规则禁止自动创建；或 get() 被拒。'; break;
-        default:
-          reason = '未知：' + (code || msg);
+        case 'permission-denied': reason='Rules 拒绝。检查：是否采用“仅参与者可读写 dmThreads/*/messages”的规则；participants 是否包含双方 UID。';break;
+        case 'unavailable': reason='网络或 Firestore 暂不可用（离线/超时）。';break;
+        case 'not-found': reason='线程不存在且规则禁止自动创建；或 get() 被拒。';break;
+        default: reason='未知：'+(code||msg);
       }
-      toast(`私聊${phase}失败（${code||'unknown'}）：${reason}`);
-      postSystemNotice(`私聊${phase}失败（${code||'unknown'}），已回到公聊。`);
+      toast(`私聊${phase}失败（${code||'unknown'}）：${reason}`); postSystemNotice(`私聊${phase}失败（${code||'unknown'}），已回到公聊。`);
     }
-
     async function startDM(tid){
-      if (unsubPublic){ unsubPublic(); unsubPublic=null; }
-      if (unsubDM){ unsubDM(); unsubDM=null; }
-      el.msgs.innerHTML = '';
-
-      const pre = await ensureDmThread(tid);
-      if(!pre.ok){ diagnoseDmError(pre.code, pre.msg, '创建/读取线程'); startPublic(); return; }
-
-      const dmCol = collection(db,'dmThreads', tid, 'messages');
-      unsubDM = onSnapshot(
-        query(dmCol, orderBy('createdAt','asc')),
-        snap => { el.msgs.innerHTML=''; snap.forEach(d=>renderMsg(d.data())); },
-        err  => { diagnoseDmError(err.code, err.message, '订阅消息'); startPublic(); }
-      );
+      if(unsubPublic){unsubPublic();unsubPublic=null;}
+      if(unsubDM){unsubDM();unsubDM=null;}
+      el.msgs.innerHTML='';
+      const pre=await ensureDmThread(tid);
+      if(!pre.ok){ diagnoseDmError(pre.code,pre.msg,'创建/读取线程'); startPublic(); return; }
+      const dmCol=collection(db,'dmThreads',tid,'messages');
+      unsubDM=onSnapshot(query(dmCol,orderBy('createdAt','asc')), s=>{ el.msgs.innerHTML=''; s.forEach(d=>renderMsg(d.data())); }, err=>{ diagnoseDmError(err.code,err.message,'订阅消息'); startPublic(); });
     }
+    function switchFeed(){ const canDM=el.dmchk.checked && dmTarget?.uid; if(canDM){ el.mode.textContent=`🔒 私聊对象：@${dmTarget.nickname}`; startDM(currentTid()); }else{ el.mode.textContent='频道：#general（未选人 → 公聊）'; startPublic(); } }
 
-    function switchFeed(){
-      const canDM = el.dmchk.checked && dmTarget?.uid;
-      if (canDM){
-        el.mode.textContent = `🔒 私聊对象：@${dmTarget.nickname}`;
-        startDM(currentTid());
-      }else{
-        el.mode.textContent = '频道：#general（未选人 → 公聊）';
-        startPublic();
-      }
-    }
-
-    // ===== UI 工具 & 渲染 =====
-    function toast(text, type='err'){
-      const t = document.createElement('div');
-      t.className = 't '+(type==='ok'?'ok':'err');
-      t.textContent = text;
-      el.toast.appendChild(t);
-      setTimeout(()=>t.remove(), 2600);
-    }
-    const gcls = (g)=> g==='male'?'male':(g==='female'?'female':'unset');
-
-    function renderMe(){
-      el.meNick.textContent = '@'+(me.nickname||'guest');
-      el.meNick.className = gcls(me.gender||'unset');
-      el.meRole.textContent = (me.roles||['user']).includes('admin') ? 'admin' : 'user';
-      el.nickInput.value = me.nickname || '';
-      el.genderInput.value = me.gender || 'unset';
-    }
-
-    function pill(u, selectable=true){
-      const admin = (u.roles||[]).includes('admin')?'<span class="badge">admin</span>':'';
-      return `<span class="pill ${gcls(u.gender)}" data-uid="${u.uid||''}" data-nick="${u.nickname||''}" data-sel="${selectable?1:0}">
-        <strong>@${u.nickname||'未知'}</strong> ${admin}
-      </span>`;
-    }
-
-    function bindPills(container){
-      [...container.querySelectorAll('.pill')].forEach(p=>{
-        p.onclick = ()=>{
-          const selectable = p.dataset.sel === '1';
-          const uid = p.dataset.uid, nick = p.dataset.nick;
-
-          if(!selectable){
-            const at = '@'+nick+' ';
-            if(!el.input.value.startsWith(at)) el.input.value = at + el.input.value;
-            el.dmchk.checked = false; dmTarget = null; switchFeed();
-            postSystemNotice(`“${nick}”为示例账号，仅用于 @ 演示，不能私聊`);
-            el.input.focus();
-            return;
-          }
-
-          if(uid){ dmTarget = { uid, nickname:nick }; switchFeed(); }
-        };
-      });
-    }
-
-    function renderUsers(list){
-      el.users.innerHTML = list.map(pill).join('');
-      bindPills(el.users);
-    }
-
-    function renderSamples(){
-      const demo = [
-        {nickname:'系统通知', gender:'unset'},
-        {nickname:'管理员A', gender:'male'},
-        {nickname:'访客B', gender:'female'},
-      ];
-      el.samples.innerHTML = demo.map(x=>pill(x,false)).join('');
-      bindPills(el.samples);
-    }
-
-    function renderMsg(m){
-      const mine = me && m.from?.uid===me.uid;
-      const div = document.createElement('div');
-      div.className = 'bubble'+(mine?' mebubble':'');
-      const who = `<span class="${gcls(m.from?.gender)}">@${m.from?.nickname||'未知'}</span>`;
-      const scope = m.isPrivate?'<span class="priv">🔒 私聊</span>':'';
-      const body = m.recalled?'<span class="hint">（已撤回）</span>' :
-                   m.deleted ?'<span class="hint">（已删除，仅作者可见）</span>' :
-                   (m.text||'').replace(/@([\u4e00-\u9fa5\w]+)/g,'<strong>@$1</strong>');
-      div.innerHTML = `<div class="from">${scope}${who}</div><div class="b">${body}</div>`;
-      el.msgs.appendChild(div);
-      el.msgs.scrollTop = el.msgs.scrollHeight;
-    }
-
-    // —— 系统提示发到公聊 —— //
-    async function postSystemNotice(text){
-      try{
-        await addDoc(collection(db,'messages'), {
-          from:{ uid:'system', nickname:'系统', gender:'unset' },
-          to:null, isPrivate:false,
-          text:`【系统】${text}`,
-          createdAt: serverTimestamp(), recalled:false, deleted:false
-        });
-      }catch(_){}
-    }
-
-    // —— 自动递增占用昵称 —— //
-    async function claimNicknameAuto(base, uid){
-      const tryName = async (name)=>{
-        const ref = doc(db,'nicknames', name);
-        const snap = await getDoc(ref);
-        if(snap.exists()) return false;
-        await setDoc(ref, { uid }); return true;
-      };
-      try{
-        let n = 1, finalName = base, ok = await tryName(finalName);
-        while(!ok && n<50){ n++; finalName = `${base}_${n}`; ok = await tryName(finalName); }
-        return finalName;
-      }catch(_){ return base; }
-    }
-
-    // —— 保存档案（可选，失败不影响聊天） —— //
+    // 保存资料（可选）
     async function saveProfile(){
-      const desired = el.nickInput.value.trim();
-      const gender  = el.genderInput.value;
-
-      if(!desired){
-        me.gender = gender; renderMe(); toast('已保存','ok'); return;
-      }
-
-      let finalName = me.nickname;
-      if(desired !== me.nickname){ finalName = await claimNicknameAuto(desired, me.uid); }
-
-      try{
-        await setDoc(doc(db,'users', me.uid), {
-          uid: me.uid, nickname: finalName, gender,
-          lastSeenAt: serverTimestamp(), roles: me.roles||['user'], blocked:false
-        }, {merge:true});
-      }catch(_){}
-
-      if(finalName !== desired){
-        await postSystemNotice(`昵称 @${desired} 已被占用，已自动更名为 @${finalName}`);
-      }else if(finalName !== me.nickname){
-        await postSystemNotice(`用户将昵称修改为 @${finalName}`);
-      }
-
-      me.nickname = finalName; me.gender = gender;
-      renderMe(); toast('已保存','ok');
+      const desired=el.nickInput.value.trim(); const gender=el.genderInput.value;
+      if(!desired){ me.gender=gender; renderMe(); toast('已保存','ok'); return; }
+      let finalName=me.nickname; if(desired!==me.nickname){ finalName=await claimNicknameAuto(desired,me.uid); }
+      try{ await setDoc(doc(db,'users',me.uid), {uid:me.uid,nickname:finalName,gender,lastSeenAt:serverTimestamp(),roles:me.roles||['user'],blocked:false}, {merge:true}); }catch(_){}
+      if(finalName!==desired){ await postSystemNotice(`昵称 @${desired} 已被占用，已自动更名为 @${finalName}`); } else if(finalName!==me.nickname){ await postSystemNotice(`用户将昵称修改为 @${finalName}`); }
+      me.nickname=finalName; me.gender=gender; renderMe(); toast('已保存','ok');
     }
 
     async function send(){
-      const text = el.input.value.trim();
-      if(!text || !me?.uid) return;
-
+      const text=el.input.value.trim(); if(!text || !me?.uid) return;
       try{
         if(el.dmchk.checked && dmTarget?.uid){
-          const a = me.uid < dmTarget.uid ? me.uid : dmTarget.uid;
-          const b = me.uid < dmTarget.uid ? dmTarget.uid : me.uid;
-          const tid = `${a}_${b}`;
-          await setDoc(doc(db,'dmThreads', tid), { participants:[a,b] }, {merge:true});
-          await addDoc(collection(db,'dmThreads', tid, 'messages'), {
-            from:{ uid:me.uid, nickname:me.nickname, gender:me.gender },
-            to:dmTarget.uid, isPrivate:true,
-            text, createdAt:serverTimestamp(), recalled:false, deleted:false
-          });
+          const a=me.uid<dmTarget.uid?me.uid:dmTarget.uid; const b=me.uid<dmTarget.uid?dmTarget.uid:me.uid; const tid=`${a}_${b}`;
+          await setDoc(doc(db,'dmThreads',tid), {participants:[a,b]}, {merge:true});
+          await addDoc(collection(db,'dmThreads',tid,'messages'), {from:{uid:me.uid,nickname:me.nickname,gender:me.gender}, to:dmTarget.uid,isPrivate:true, text, createdAt:serverTimestamp(),recalled:false,deleted:false});
           toast('已发送私聊','ok');
         }else{
-          if(el.dmchk.checked && !dmTarget?.uid){
-            postSystemNotice('未选择有效的私聊对象，已按公屏发送并自动 @');
-          }
-          const t = (dmTarget && !el.dmchk.checked) ? `@${dmTarget.nickname} ${text}` : text;
-          await addDoc(collection(db,'messages'), {
-            from:{ uid:me.uid, nickname:me.nickname, gender:me.gender },
-            to:null, isPrivate:false,
-            text:t, createdAt:serverTimestamp(), recalled:false, deleted:false
-          });
+          if(el.dmchk.checked && !dmTarget?.uid){ postSystemNotice('未选择有效的私聊对象，已按公屏发送并自动 @'); }
+          const t=(dmTarget && !el.dmchk.checked)?`@${dmTarget.nickname} ${text}`:text;
+          await addDoc(collection(db,'messages'), {from:{uid:me.uid,nickname:me.nickname,gender:me.gender}, to:null,isPrivate:false, text:t, createdAt:serverTimestamp(),recalled:false,deleted:false});
         }
         el.input.value='';
       }catch(e){
-        if(String(e.message||'').includes('Missing or insufficient permissions')) {
-          toast('权限不足：请在 Firestore Rules 放行匿名用户写 messages/dmThreads');
-        } else { toast('发送失败：'+e.message); }
+        if(String(e.message||'').includes('Missing or insufficient permissions')) toast('权限不足：请在 Rules 放行匿名用户写 messages/dmThreads');
+        else toast('发送失败：'+e.message);
       }
     }
 
     // 事件
-    el.send.onclick = send;
-    el.input.addEventListener('keydown', e=>{
-      if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); }
-    });
-    el.dmchk.onchange = ()=>{ switchFeed(); };
-    el.saveProfile.onclick = saveProfile;
-    el.clearDM.onclick = ()=>{ dmTarget=null; el.dmchk.checked=false; switchFeed(); };
-    document.querySelectorAll('[data-at]').forEach(c=>{
-      c.addEventListener('click', ()=>{
-        const at = c.getAttribute('data-at')+' ';
-        if(!el.input.value.startsWith(at)) el.input.value = at + el.input.value;
-        el.input.focus();
-      });
-    });
+    el.send.onclick=send;
+    el.input.addEventListener('keydown',e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); } });
+    el.dmchk.onchange=()=>{ switchFeed(); };
+    el.saveProfile.onclick=saveProfile;
+    el.clearDM.onclick=()=>{ dmTarget=null; el.dmchk.checked=false; switchFeed(); };
+    document.querySelectorAll('[data-at]').forEach(c=>{ c.addEventListener('click',()=>{ const at=c.getAttribute('data-at')+' '; if(!el.input.value.startsWith(at)) el.input.value=at+el.input.value; el.input.focus(); }); });
 
-    // —— 启动：匿名登录；users 失败也不影响聊天 —— //
+    // 启动
     signInAnonymously(auth).catch(e=>setStatus('err','匿名登录失败：'+e.message));
     onAuthStateChanged(auth, async (u)=>{
-      if(!u) return;
-      me.uid = u.uid;
-
-      // 默认昵称
-      const males = ['阿强','建国','一鸣','子轩','志远','浩然'];
-      const females = ['美琳','可欣','语桐','嘉怡','若兰','欣怡'];
-      const rnd = (arr)=>arr[Math.floor(Math.random()*arr.length)];
-      let gender = Math.random()<.5?'male':'female';
-      let base = (gender==='male'?rnd(males):rnd(females)) + Math.floor(Math.random()*90+10);
-
+      if(!u) return; me.uid=u.uid;
+      const males=['阿强','建国','一鸣','子轩','志远','浩然']; const females=['美琳','可欣','语桐','嘉怡','若兰','欣怡']; const rnd=a=>a[Math.floor(Math.random()*a.length)];
+      let gender=Math.random()<.5?'male':'female'; let base=(gender==='male'?rnd(males):rnd(females))+Math.floor(Math.random()*90+10);
       try{
-        const uref = doc(db,'users', u.uid);
-        const s = await getDoc(uref);
+        const uref=doc(db,'users',u.uid); const s=await getDoc(uref);
         if(!s.exists()){
-          const finalNick = await claimNicknameAuto(base, u.uid);
-          try{
-            await setDoc(uref, {
-              uid:u.uid, nickname: finalNick, gender,
-              createdAt: serverTimestamp(), lastSeenAt: serverTimestamp(),
-              roles:['user'], blocked:false
-            });
-          }catch(_){}
-          me.nickname = finalNick; me.gender = gender;
-          if(finalNick !== base){ await postSystemNotice(`检测到昵称重名，已自动更名为 @${finalNick}`); }
-        }else{
-          const d = s.data();
-          me.nickname = d.nickname || base;
-          me.gender = d.gender || 'unset';
-          me.roles = d.roles || ['user'];
-        }
-      }catch(_){
-        me.nickname = base; me.gender = gender; me.roles = ['user'];
-        await postSystemNotice(`用户加入：@${me.nickname}`);
-      }
-
-      renderMe(); renderSamples();
-      switchFeed();                 // 首次订阅（公聊）
-      setStatus('ok','已就绪', 1500); // ✅ 清晰显示几秒就绪
-      el.input.disabled = false; el.send.disabled = false;
-
-      // 订阅用户（失败忽略）
-      try{
-        onSnapshot(query(collection(db,'users'), orderBy('createdAt','asc')), snap=>{
-          const arr=[]; snap.forEach(d=>arr.push(d.data())); renderUsers(arr);
-        });
-      }catch(_){}
+          const finalNick=await claimNicknameAuto(base,u.uid);
+          try{ await setDoc(uref,{uid:u.uid,nickname:finalNick,gender,createdAt:serverTimestamp(),lastSeenAt:serverTimestamp(),roles:['user'],blocked:false}); }catch(_){}
+          me.nickname=finalNick; me.gender=gender; if(finalNick!==base){ await postSystemNotice(`检测到昵称重名，已自动更名为 @${finalNick}`); }
+        }else{ const d=s.data(); me.nickname=d.nickname||base; me.gender=d.gender||'unset'; me.roles=d.roles||['user']; }
+      }catch(_){ me.nickname=base; me.gender=gender; me.roles=['user']; await postSystemNotice(`用户加入：@${me.nickname}`); }
+      renderMe(); renderSamples(); switchFeed(); setStatus('ok','已就绪',1500); el.input.disabled=false; el.send.disabled=false;
+      try{ onSnapshot(query(collection(db,'users'),orderBy('createdAt','asc')), snap=>{ const arr=[]; snap.forEach(d=>arr.push(d.data())); renderUsers(arr); }); }catch(_){}
     });
-
-    // 网络提示（状态条说明）
-    window.addEventListener('online', ()=>setStatus('ok','网络已恢复', 1200));
+    window.addEventListener('online', ()=>setStatus('ok','网络已恢复',1200));
     window.addEventListener('offline', ()=>setStatus('err','网络不可用'));
   </script>
 </body>
