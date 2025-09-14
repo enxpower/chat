@@ -2,20 +2,31 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [ main ]
+
 permissions:
   contents: read
   pages: write
   id-token: write
+
 concurrency:
   group: "pages"
   cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # 自动启用本仓库的 Pages（修复 Get Pages site failed）
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      # 上传构件：我们是纯静态站点，直接把仓库根目录发布
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
+
+      # 正式发布
       - uses: actions/deploy-pages@v4
