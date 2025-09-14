@@ -148,7 +148,7 @@
     function currentTid(){ if(!me?.uid||!dmTarget?.uid) return null; const a=me.uid<dmTarget.uid?me.uid:dmTarget.uid; const b=me.uid<dmTarget.uid?dmTarget.uid:me.uid; return `${a}_${b}`; }
     function startPublic(){ if(unsubDM){unsubDM();unsubDM=null;} if(unsubPublic) return; el.msgs.innerHTML=''; unsubPublic=onSnapshot(query(collection(db,'messages'),orderBy('createdAt','asc')), s=>{ el.msgs.innerHTML=''; s.forEach(d=>renderMsg(d.data())); }, err=>{ setStatus('err','公聊订阅失败：'+(err.code||err.message)); }); }
 
-    // ✅ 只写不读，避免被 read 规则拦
+    // 只写不读，避免被 /users 读权限或 dmThreads 读规则拦住
     async function ensureDmThread(tid){
       const tRef = doc(db,'dmThreads',tid);
       try{
@@ -161,9 +161,8 @@
     function diagnoseDmError(code,msg,phase){
       let reason='';
       switch(code){
-        case 'permission-denied': reason='Rules 拒绝。检查：是否采用“仅参与者可读写 dmThreads/*/messages”的规则；participants 是否包含双方 UID。';break;
+        case 'permission-denied': reason='Rules 拒绝。检查：是否采用“TID 授权”规则；tid 是否包含当前 UID。';break;
         case 'unavailable': reason='网络或 Firestore 暂不可用（离线/超时）。';break;
-        case 'not-found': reason='线程不存在且规则禁止自动创建；或 get() 被拒。';break;
         default: reason='未知：'+(code||msg);
       }
       toast(`私聊${phase}失败（${code||'unknown'}）：${reason}`); postSystemNotice(`私聊${phase}失败（${code||'unknown'}），已回到公聊。`);
@@ -217,23 +216,38 @@
     el.clearDM.onclick=()=>{ dmTarget=null; el.dmchk.checked=false; switchFeed(); };
     document.querySelectorAll('[data-at]').forEach(c=>{ c.addEventListener('click',()=>{ const at=c.getAttribute('data-at')+' '; if(!el.input.value.startsWith(at)) el.input.value=at+el.input.value; el.input.focus(); }); });
 
-    // 启动
+    // 启动：匿名登录 + users 只写不读（确保“在线用户”能出现）
     signInAnonymously(auth).catch(e=>setStatus('err','匿名登录失败：'+e.message));
     onAuthStateChanged(auth, async (u)=>{
       if(!u) return; me.uid=u.uid;
+
+      // 默认昵称
       const males=['阿强','建国','一鸣','子轩','志远','浩然']; const females=['美琳','可欣','语桐','嘉怡','若兰','欣怡']; const rnd=a=>a[Math.floor(Math.random()*a.length)];
       let gender=Math.random()<.5?'male':'female'; let base=(gender==='male'?rnd(males):rnd(females))+Math.floor(Math.random()*90+10);
+
+      // ★ 不再 getDoc(users)；直接写入（merge）
+      let finalNick = await claimNicknameAuto(base, u.uid);
       try{
-        const uref=doc(db,'users',u.uid); const s=await getDoc(uref);
-        if(!s.exists()){
-          const finalNick=await claimNicknameAuto(base,u.uid);
-          try{ await setDoc(uref,{uid:u.uid,nickname:finalNick,gender,createdAt:serverTimestamp(),lastSeenAt:serverTimestamp(),roles:['user'],blocked:false}); }catch(_){}
-          me.nickname=finalNick; me.gender=gender; if(finalNick!==base){ await postSystemNotice(`检测到昵称重名，已自动更名为 @${finalNick}`); }
-        }else{ const d=s.data(); me.nickname=d.nickname||base; me.gender=d.gender||'unset'; me.roles=d.roles||['user']; }
-      }catch(_){ me.nickname=base; me.gender=gender; me.roles=['user']; await postSystemNotice(`用户加入：@${me.nickname}`); }
-      renderMe(); renderSamples(); switchFeed(); setStatus('ok','已就绪',1500); el.input.disabled=false; el.send.disabled=false;
-      try{ onSnapshot(query(collection(db,'users'),orderBy('createdAt','asc')), snap=>{ const arr=[]; snap.forEach(d=>arr.push(d.data())); renderUsers(arr); }); }catch(_){}
+        await setDoc(doc(db,'users',u.uid), {
+          uid:u.uid, nickname:finalNick, gender,
+          createdAt:serverTimestamp(), lastSeenAt:serverTimestamp(),
+          roles:['user'], blocked:false
+        }, { merge:true });
+      }catch(_){
+        // 若写失败，仍给出系统提示，但列表会空
+        await postSystemNotice(`用户加入：@${finalNick}`);
+      }
+      me.nickname=finalNick; me.gender=gender; renderMe(); renderSamples(); switchFeed();
+      setStatus('ok','已就绪',1500); el.input.disabled=false; el.send.disabled=false;
+
+      // 订阅在线用户
+      try{
+        onSnapshot(query(collection(db,'users'), orderBy('createdAt','asc')), snap=>{
+          const arr=[]; snap.forEach(d=>arr.push(d.data())); renderUsers(arr);
+        });
+      }catch(_){}
     });
+
     window.addEventListener('online', ()=>setStatus('ok','网络已恢复',1200));
     window.addEventListener('offline', ()=>setStatus('err','网络不可用'));
   </script>
