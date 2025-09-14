@@ -22,7 +22,6 @@
   .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;margin:4px 6px 4px 0;border:1px solid var(--line);border-radius:999px;background:#fff;cursor:pointer}
   .badge{font-size:10px;border:1px solid var(--line);border-radius:999px;padding:0 6px;color:#6b7280;background:#fff}
   .grp{font-size:12px;color:#6b7280;margin:2px 0 6px 2px}
-
   .right{display:grid;grid-template-rows:auto 1fr auto auto;gap:10px;padding:14px;height:calc(100vh - 110px)}
   .mode{color:#6b7280;font-size:12px}
   .msgs{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#ffffff}
@@ -32,13 +31,11 @@
   .mebubble .b{background:#eef2ff;border-color:#c7d2fe}
   .priv .b{background:#f6f0ff;border-color:#e9d5ff}
   .priv .from::before{content:"🔒 ";}
-
   .row{display:flex;gap:10px;align-items:center}
   textarea{flex:1;min-height:56px;resize:vertical;border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff}
   .chips{display:flex;gap:8px;flex-wrap:wrap}
   .chip{display:inline-flex;align-items:center;gap:6px;border:1px dashed var(--line);border-radius:999px;padding:6px 10px;background:#fff;cursor:pointer}
   .hint{color:#6b7280;font-size:12px}
-
   .status{position:sticky;top:0;z-index:10;display:flex;gap:8px;align-items:center;margin:10px auto 0;max-width:1200px;padding:8px 12px;border-radius:12px;border:1px solid var(--line);box-shadow:var(--shadow);background:#ffffffcc;backdrop-filter:saturate(180%) blur(8px)}
   .status .dot{width:8px;height:8px;border-radius:999px;background:#f59e0b;animation:bl 1.2s infinite}.status.ok .dot{background:#10b981}.status.err .dot{background:#ef4444}
   @keyframes bl{0%{opacity:.4}50%{opacity:1}100%{opacity:.4}}
@@ -49,7 +46,6 @@
 <div id="status" class="status"><span class="dot"></span><span id="statusText">正在连接 Firebase…</span></div>
 
 <div class="wrap">
-  <!-- 左侧 -->
   <aside class="card left">
     <div class="me">
       <div class="row"><span>我：<strong id="meNick" class="unset">@guest</strong></span><span id="meRole" class="tag">user</span></div>
@@ -62,31 +58,25 @@
         <button class="btn" id="clearDM">清空私聊对象</button>
       </div>
     </div>
-
     <div class="grp">在线用户</div>
     <div id="users" class="list"></div>
-
     <div class="grp">示例账号（本地，不占后端）</div>
     <div id="samples" class="list" style="min-height:70px"></div>
   </aside>
 
-  <!-- 右侧：单一消息流 -->
   <main class="card right">
     <div id="mode" class="mode">频道：#general（私聊同屏高亮，仅双方可见）</div>
     <div id="msgs" class="msgs"></div>
-
     <div class="row">
       <label class="hint" style="display:flex;align-items:center;gap:8px">
         <input id="dmchk" type="checkbox" checked />
         私聊打勾（勾选=仅双方可见；不勾选=发到公屏并自动 @）
       </label>
     </div>
-
     <div class="row">
       <textarea id="input" placeholder="输入消息…  Enter 发送；Shift+Enter 换行"></textarea>
       <button id="send" class="btn primary">发送</button>
     </div>
-
     <div class="chips">
       <span class="chip" data-at="@系统通知">@系统通知</span>
       <span class="chip" data-at="@管理员A">@管理员A</span>
@@ -95,31 +85,22 @@
   </main>
 </div>
 
-<!-- 方案1：在页面里直接写入配置（推荐先用这个，立刻连通；把占位替换成你的真实配置） -->
-<script>
-  window.FIREBASE_CONFIG = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_MSG_SENDER_ID",
-    appId: "YOUR_APP_ID"
-  };
-</script>
-
 <script type="module">
-  // === 状态条工具 ===
+  // ===== 状态条 =====
   const statusBar = document.getElementById('status');
   const statusText = document.getElementById('statusText');
   const setStatus = (kind, text, hide)=>{ statusBar.className='status '+(kind||''); statusText.textContent=text||''; statusBar.style.display='flex'; if(hide){ setTimeout(()=>statusBar.style.display='none', hide); } };
 
-  // === 配置加载：优先使用 window.FIREBASE_CONFIG；否则拉取 firebaseConfig.json ===
+  // ===== 只从 firebaseConfig.json 加载配置，并校验 =====
   async function loadConfig(){
-    if (window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.apiKey) return window.FIREBASE_CONFIG;
     try{
-      const r = await fetch('./firebaseConfig.json',{cache:'no-store'});
-      if(!r.ok) throw new Error(`加载 firebaseConfig.json 失败（HTTP ${r.status}）`);
-      return await r.json();
+      const r = await fetch('./firebaseConfig.json', {cache:'no-store'});
+      if(!r.ok) throw new Error(`读取 firebaseConfig.json 失败（HTTP ${r.status}）`);
+      const cfg = await r.json();
+      // 简单校验：apiKey/appId 不能是占位/空串
+      const bad = (v)=> !v || typeof v!=='string' || /YOUR_|<|>|\s/.test(v) || v.length<10;
+      if (bad(cfg.apiKey) || bad(cfg.appId)) throw new Error('配置无效：apiKey/appId 看起来不对（可能是占位值）');
+      return cfg;
     }catch(e){
       setStatus('err','配置未加载：'+(e.message||e));
       throw e;
@@ -127,7 +108,7 @@
   }
   const cfg = await loadConfig();
 
-  // === Firebase SDK ===
+  // ===== Firebase SDK =====
   import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
   import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
   import { getFirestore, serverTimestamp, doc, getDoc, setDoc, addDoc, collection, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
@@ -136,33 +117,25 @@
   const auth = getAuth(app);
   const db   = getFirestore(app);
 
-  // 未捕获错误 → 显示在状态条
   window.addEventListener('unhandledrejection', ev=>{
     setStatus('err','运行错误：'+(ev.reason?.message||ev.reason||'Unknown'));
   });
 
-  // DOM refs
+  // ===== DOM =====
   const $=id=>document.getElementById(id);
   const el={ meNick:$('meNick'), meRole:$('meRole'), nickInput:$('nickInput'), genderInput:$('genderInput'), saveProfile:$('saveProfile'), clearDM:$('clearDM'), users:$('users'), samples:$('samples'), msgs:$('msgs'), input:$('input'), send:$('send'), dmchk:$('dmchk'), mode:$('mode') };
 
-  // 状态
   let me={ uid:null, nickname:'guest', gender:'unset', roles:['user'] };
   let dmTarget=null;
 
-  // UI 工具
   const gcls=g=>g==='male'?'male':(g==='female'?'female':'unset');
   const renderMe=()=>{ el.meNick.textContent='@'+(me.nickname||'guest'); el.meNick.className=gcls(me.gender||'unset'); el.meRole.textContent=(me.roles||['user']).includes('admin')?'admin':'user'; el.nickInput.value=me.nickname||''; el.genderInput.value=me.gender||'unset'; };
-
-  // 在线用户 pill
   const pill=(u,sel=true)=>{ const ad=(u.roles||[]).includes('admin')?'<span class="badge">admin</span>':''; return `<span class="pill ${gcls(u.gender)}" data-uid="${u.uid||''}" data-nick="${u.nickname||''}" data-sel="${sel?1:0}"><strong>@${u.nickname||'未知'}</strong> ${ad}</span>`; };
   function bindPills(c){
     [...c.querySelectorAll('.pill')].forEach(p=>{
       p.onclick=()=>{
         const uid=p.dataset.uid, nick=p.dataset.nick;
-        if(!uid){ // 示例账号：只 @，不能私聊
-          const at='@'+nick+' '; if(!el.input.value.startsWith(at)) el.input.value=at+el.input.value;
-          el.dmchk.checked=false; dmTarget=null; return;
-        }
+        if(!uid){ const at='@'+nick+' '; if(!el.input.value.startsWith(at)) el.input.value=at+el.input.value; el.dmchk.checked=false; dmTarget=null; return; }
         if(uid===me.uid){ el.dmchk.checked=false; dmTarget=null; return; }
         dmTarget={uid,nickname:nick};
       };
@@ -171,8 +144,7 @@
   const renderUsers=list=>{ el.users.innerHTML=list.map(pill).join(''); bindPills(el.users); };
   const renderSamples=()=>{ const demo=[{nickname:'系统通知',gender:'unset'},{nickname:'管理员A',gender:'male'},{nickname:'访客B',gender:'female'}]; el.samples.innerHTML=demo.map(x=>pill(x,false)).join(''); bindPills(el.samples); };
 
-  // 合并信息流
-  const feed=new Map(); // id -> {createdAt,isPrivate,from,text}
+  const feed=new Map();
   function renderFeed(){
     const arr=[...feed.values()].sort((a,b)=>((a.createdAt?.seconds||0)-(b.createdAt?.seconds||0))||((a.createdAt?.nanoseconds||0)-(b.createdAt?.nanoseconds||0)));
     el.msgs.innerHTML='';
@@ -188,18 +160,15 @@
     el.msgs.scrollTop=el.msgs.scrollHeight;
   }
 
-  // 系统消息（发到公屏，温和告知）
   async function postSystemNotice(text){
     try{ await addDoc(collection(db,'messages'), {from:{uid:'system',nickname:'系统',gender:'unset'}, isPrivate:false, text:`【系统】${text}`, createdAt:serverTimestamp()}); }catch(_){}
   }
 
-  // 昵称唯一（简单占用表）
   async function claimNicknameAuto(base, uid){
     const tryName=async(name)=>{ const r=doc(db,'nicknames',name); const s=await getDoc(r); if(s.exists()) return false; await setDoc(r,{uid}); return true; };
     try{ let n=1, fin=base, ok=await tryName(fin); while(!ok && n<50){ n++; fin=`${base}_${n}`; ok=await tryName(fin);} return fin; }catch(_){ return base; }
   }
 
-  // 发送
   async function send(){
     const text=el.input.value.trim(); if(!text||!me?.uid) return;
     try{
@@ -217,9 +186,7 @@
         });
       }
       el.input.value='';
-    }catch(e){
-      postSystemNotice(`发送失败：${e.code||e.message||e}`); // 不要吓人的红条
-    }
+    }catch(e){ postSystemNotice(`发送失败：${e.code||e.message||e}`); }
   }
 
   el.send.onclick=send;
@@ -233,49 +200,41 @@
     me.nickname=finalName; me.gender=gender; renderMe();
   };
 
-  // 登录 & 初始化
+  // ===== 登录 & 初始化 =====
+  import { isSignInWithEmailLink } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js"; // 仅为确保模块加载
   signInAnonymously(auth).catch(e=> setStatus('err','匿名登录失败：'+e.message));
+
   onAuthStateChanged(auth, async (u)=>{
     if(!u) return;
     me.uid=u.uid;
 
-    // 默认昵称
     const males=['阿强','建国','一鸣','子轩','志远','浩然']; const females=['美琳','可欣','语桐','嘉怡','若兰','欣怡']; const rnd=a=>a[Math.floor(Math.random()*a.length)];
     let gender=Math.random()<.5?'male':'female'; let base=(gender==='male'?rnd(males):rnd(females))+Math.floor(Math.random()*90+10);
     const finalNick=await claimNicknameAuto(base, me.uid);
 
-    // /users 写入（务必带 uid 字段）
     try{
       await setDoc(doc(db,'users',me.uid), {
         uid:me.uid, nickname:finalNick, gender,
         createdAt:serverTimestamp(), lastSeenAt:serverTimestamp(),
         roles:['user'], blocked:false
       }, {merge:true});
-    }catch(_){ /* 忽略，聊天照样走 */ }
+    }catch(_){}
 
     me.nickname=finalNick; me.gender=gender; renderMe(); renderSamples();
 
-    // 公聊订阅
     onSnapshot(query(collection(db,'messages'), orderBy('createdAt','asc')), snap=>{
-      snap.docChanges().forEach(ch=>{
-        if(ch.type==='added'||ch.type==='modified'){ feed.set('pub-'+ch.doc.id, ch.doc.data()); }
-      });
+      snap.docChanges().forEach(ch=>{ if(ch.type==='added'||ch.type==='modified') feed.set('pub-'+ch.doc.id, ch.doc.data()); });
       renderFeed();
     });
 
-    // 私聊订阅（只拉到包含我的）
     onSnapshot(query(collection(db,'dm'), where('parties','array-contains', me.uid)), snap=>{
-      snap.docChanges().forEach(ch=>{
-        if(ch.type==='added'||ch.type==='modified'){ feed.set('dm-'+ch.doc.id, ch.doc.data()); }
-      });
+      snap.docChanges().forEach(ch=>{ if(ch.type==='added'||ch.type==='modified') feed.set('dm-'+ch.doc.id, ch.doc.data()); });
       renderFeed();
     });
 
-    // 在线用户（★ 一定要带上 uid，doc.id 兜底）
     try{
       onSnapshot(query(collection(db,'users'), orderBy('createdAt','asc')), s=>{
-        const arr=[]; s.forEach(d=>arr.push({ uid:d.id, ...d.data() })); // 带 uid
-        renderUsers(arr);
+        const arr=[]; s.forEach(d=>arr.push({ uid:d.id, ...d.data() })); renderUsers(arr);
       });
     }catch(_){}
 
