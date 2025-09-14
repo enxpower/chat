@@ -4,45 +4,29 @@ service cloud.firestore {
 
     function isAuth() { return request.auth != null; }
 
-    // ===== 用户档案（可选）=====
-    match /users/{uid} {
-      allow read: if isAuth();
-      allow create, update: if isAuth() && request.auth.uid == uid;
-      allow delete: if false;
+    // ========== 公聊 ==========
+    match /messages/{id} {
+      allow read: if true;        // 想更严可以改 isAuth()
+      allow create: if isAuth();  // 匿名可发
     }
 
-    // ===== 昵称占用表（全局唯一）=====
-    match /nicknames/{name} {
-      allow read: if true;
-      allow create: if isAuth() && !exists(resource.path);
-      allow update, delete: if false;
+    // ========== 私聊（基于 TID 权限）==========
+    // 约定：tid = smallerUID + '_' + largerUID
+    function inTid(tid) {
+      return isAuth() &&
+        (tid.matches('^' + request.auth.uid + '_.*') ||
+         tid.matches('.*_' + request.auth.uid + '$'));
     }
 
-    // ===== 公聊消息 =====
-    match /messages/{msgId} {
-      allow read: if true;       // 或改 isAuth()
-      allow create: if isAuth(); // 匿名即可发
-      allow update, delete: if false;
-    }
-
-    // ===== 私聊线程（仅参与者可读写）=====
     match /dmThreads/{tid} {
-      // 创建时即校验 participants
-      allow create: if isAuth()
-                    && (request.resource.data.participants is list)
-                    && request.resource.data.participants.size() == 2
-                    && request.auth.uid in request.resource.data.participants;
+      // 随便创建，不做字段校验（避免“写之前先读”的阻碍）
+      allow create: if isAuth();
+      // 只有 TID 含自己 UID 的人能读线程
+      allow read:   if inTid(tid);
 
-      // 读取线程文档：必须是参与者
-      allow read: if isAuth()
-                  && (request.auth.uid in resource.data.participants);
-
-      // 线程下的消息：必须是参与者
       match /messages/{mid} {
-        allow read, create: if isAuth()
-          && (request.auth.uid in
-              get(/databases/$(database)/documents/dmThreads/$(tid)).data.participants);
-        allow update, delete: if false;
+        // 只有 TID 含自己 UID 的人能读/发该线程消息
+        allow read, create: if inTid(tid);
       }
     }
   }
