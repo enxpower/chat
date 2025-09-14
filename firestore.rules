@@ -1,0 +1,90 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function self(uid) { return signedIn() && request.auth.uid == uid; }
+    function now() { return request.time; }
+
+    // 用户档案
+    match /users/{uid} {
+      allow read: if true;
+      allow create: if self(request.resource.data.uid);
+      allow update: if self(uid)
+        && !('roles' in request.resource.data)
+        && !('blocked' in request.resource.data)
+        && !('mutedUntil' in request.resource.data);
+      allow delete: if false;
+    }
+
+    // 昵称占用表（全局唯一）
+    match /nicknames/{name} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && !exists(resource.path);
+      allow delete: if self(resource.data.uid);
+      allow update: if false;
+    }
+
+    // 公聊消息（单房间）
+    match /messages/{msgId} {
+      allow read: if true;
+      allow create: if signedIn() && canSend();
+      allow update: if signedIn()
+        && request.auth.uid == resource.data.from.uid
+        && now() < resource.data.createdAt + duration.value(120, 's')
+        && isSoftEdit(resource.data, request.resource.data);
+      allow delete: if false;
+    }
+
+    // 私聊线程与消息（threadId = uidA_uidB 升序）
+    match /dmThreads/{threadId} {
+      allow read, create: if signedIn() && isParticipantNew(threadId, request);
+      allow update, delete: if false;
+
+      match /messages/{msgId} {
+        allow read: if signedIn() && isParticipant(threadId);
+        allow create: if signedIn() && isParticipant(threadId) && canSend();
+        allow update: if signedIn()
+          && request.auth.uid == resource.data.from.uid
+          && now() < resource.data.createdAt + duration.value(120, 's')
+          && isSoftEdit(resource.data, request.resource.data);
+        allow delete: if false;
+      }
+    }
+
+    // （可选）正在输入标记
+    match /typing/{channelKey}/{uid} {
+      allow read: if signedIn();
+      allow create, update, delete: if self(uid);
+    }
+
+    // ===== helpers =====
+    function canSend() {
+      let u = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return !u.blocked && (!( 'mutedUntil' in u ) || u.mutedUntil <= now());
+    }
+
+    function isSoftEdit(old, nu) {
+      return (nu.recalled == old.recalled || nu.recalled == true || nu.recalled == false)
+          && (nu.deleted  == old.deleted  || nu.deleted  == true || nu.deleted  == false)
+          && nu.from == old.from
+          && nu.to == old.to
+          && nu.isPrivate == old.isPrivate
+          && nu.text == old.text
+          && nu.mentions == old.mentions
+          && nu.imageUrl == old.imageUrl
+          && nu.createdAt == old.createdAt;
+    }
+
+    function isParticipant(threadId) {
+      let t = get(/databases/$(database)/documents/dmThreads/$(threadId)).data;
+      return request.auth.uid in t.participants;
+    }
+
+    function isParticipantNew(threadId, req) {
+      return req.resource.data.participants.size() == 2
+          && request.auth.uid in req.resource.data.participants;
+    }
+  }
+}
