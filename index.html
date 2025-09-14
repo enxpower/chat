@@ -72,7 +72,7 @@
           <button class="btn" id="saveProfile">保存</button>
         </div>
         <div class="row">
-          <input id="nickInput" class="ipt" placeholder="昵称（唯一）"/>
+          <input id="nickInput" class="ipt" placeholder="昵称（唯一，可选）"/>
           <select id="genderInput" class="ipt" style="max-width:120px">
             <option value="unset">未设置</option>
             <option value="male">male</option>
@@ -150,12 +150,12 @@
       dmchk:$('dmchk'), mode:$('mode'), toast:$('toast')
     };
 
-    // 状态
-    let me = null;              // { uid, nickname, gender, roles }
-    let dmTarget = null;        // { uid, nickname }
+    // 状态（users 档案是可选的，发送完全不依赖）
+    let me = { uid:null, nickname:'guest', gender:'unset', roles:['user'] };
+    let dmTarget = null;
     let dmChecked = true;
 
-    // UI 小工具
+    // 小工具
     function toast(text, type='err'){
       const t = document.createElement('div');
       t.className = 't '+(type==='ok'?'ok':'err');
@@ -190,7 +190,6 @@
           const selectable = p.dataset.sel === '1';
           const uid = p.dataset.uid, nick = p.dataset.nick;
           if(!selectable){
-            // 示例账号 → 只做@引导
             const at = '@'+nick+' ';
             if(!el.input.value.startsWith(at)) el.input.value = at + el.input.value;
             el.input.focus(); dmTarget=null; setMode(); return;
@@ -237,10 +236,10 @@
           text:`【系统】${text}`,
           createdAt: serverTimestamp(), recalled:false, deleted:false
         });
-      }catch(e){ /* 静默失败 */ }
+      }catch(_){}
     }
 
-    // —— 自动递增占用昵称：base, base_2, base_3… —— //
+    // —— 自动递增占用昵称：base, base_2, base_3…（失败就本地用 base） —— //
     async function claimNicknameAuto(base, uid){
       const tryName = async (name)=>{
         const ref = doc(db,'nicknames', name);
@@ -249,37 +248,47 @@
         await setDoc(ref, { uid });
         return true;
       };
-      // 先试 base，不行就 _2 起步
-      let n = 1;
-      let finalName = base;
-      let ok = await tryName(finalName);
-      while(!ok && n<50){
-        n += 1;
-        finalName = `${base}_${n}`;
-        ok = await tryName(finalName);
+      try{
+        let n = 1;
+        let finalName = base;
+        let ok = await tryName(finalName);
+        while(!ok && n<50){
+          n += 1;
+          finalName = `${base}_${n}`;
+          ok = await tryName(finalName);
+        }
+        return finalName;
+      }catch(_){
+        return base; // 昵称表不可写时，直接用 base，不阻塞
       }
-      return finalName; // 一定是成功占用的名字
     }
 
-    // 保存档案（不写 mutedUntil，避免规则比较问题）
+    // —— 保存档案（可选，失败也不影响聊天） —— //
     async function saveProfile(){
       const desired = el.nickInput.value.trim();
-      if(!desired) return toast('昵称不能为空'); // 本地轻提醒，不阻塞聊天
       const gender = el.genderInput.value;
 
-      // 改名则自动占用（重名自动 +1），不报错
+      if(!desired){
+        me.gender = gender;
+        renderMe();
+        toast('已保存', 'ok');
+        return;
+      }
+
       let finalName = me.nickname;
       if(desired !== me.nickname){
         finalName = await claimNicknameAuto(desired, me.uid);
       }
 
-      await setDoc(doc(db,'users', me.uid), {
-        uid: me.uid, nickname: finalName, gender,
-        lastSeenAt: serverTimestamp(),
-        roles: me.roles||['user'], blocked:false
-      }, {merge:true});
+      // 写 users：失败也无所谓（不影响 messages 发送）
+      try{
+        await setDoc(doc(db,'users', me.uid), {
+          uid: me.uid, nickname: finalName, gender,
+          lastSeenAt: serverTimestamp(),
+          roles: me.roles||['user'], blocked:false
+        }, {merge:true});
+      }catch(_){/* 忽略 */}
 
-      // 若发生自动 +1，在公聊发系统提示
       if(finalName !== desired){
         await postSystemNotice(`昵称 @${desired} 已被占用，已自动更名为 @${finalName}`);
       }else if(finalName !== me.nickname){
@@ -292,7 +301,7 @@
     }
 
     async function send(){
-      if(!me) return;
+      if(!me || !me.uid){ return toast('尚未连接后端'); }
       const text = el.input.value.trim();
       if(!text) return;
 
@@ -319,7 +328,7 @@
         el.input.value='';
       }catch(e){
         if(String(e.message||'').includes('Missing or insufficient permissions')) {
-          toast('权限不足：请检查 Firestore 规则 & 确保用户档案存在（且未写 mutedUntil=null）');
+          toast('权限不足：请在 Rules 放行匿名用户写 messages/dmThreads');
         } else {
           toast('发送失败：'+e.message);
         }
@@ -342,54 +351,63 @@
       });
     });
 
-    // 启动：匿名登录 → 初始化用户（默认分配；重名自动+1；不阻塞聊天）
+    // —— 启动：匿名登录；users 失败也不影响聊天 —— //
     signInAnonymously(auth).catch(e=>toast('匿名登录失败：'+e.message));
     onAuthStateChanged(auth, async (u)=>{
       if(!u) return;
+      me.uid = u.uid;
+
+      // 生成本地默认昵称
+      const males = ['阿强','建国','一鸣','子轩','志远','浩然'];
+      const females = ['美琳','可欣','语桐','嘉怡','若兰','欣怡'];
+      const rnd = (arr)=>arr[Math.floor(Math.random()*arr.length)];
+      let gender = Math.random()<.5?'male':'female';
+      let base = (gender==='male'?rnd(males):rnd(females)) + Math.floor(Math.random()*90+10);
+
+      // 尝试读取/写入 users，但若失败，不影响聊天
       try{
         const uref = doc(db,'users', u.uid);
         const s = await getDoc(uref);
         if(!s.exists()){
-          // 默认给一个昵称/性别（不强迫更改）
-          const males = ['阿强','建国','一鸣','子轩','志远','浩然'];
-          const females = ['美琳','可欣','语桐','嘉怡','若兰','欣怡'];
-          const rnd = (arr)=>arr[Math.floor(Math.random()*arr.length)];
-          let gender = Math.random()<.5?'male':'female';
-          let base = (gender==='male'?rnd(males):rnd(females)) + Math.floor(Math.random()*90+10);
-
-          // 自动递增占用（无报错）
           const finalNick = await claimNicknameAuto(base, u.uid);
-
-          await setDoc(uref, {
-            uid:u.uid, nickname: finalNick, gender,
-            createdAt: serverTimestamp(), lastSeenAt: serverTimestamp(),
-            roles:['user'], blocked:false
-          });
-          me = { uid:u.uid, nickname:finalNick, gender, roles:['user'] };
-
-          // 若发生自动 +1，在公聊提示
+          try{
+            await setDoc(uref, {
+              uid:u.uid, nickname: finalNick, gender,
+              createdAt: serverTimestamp(), lastSeenAt: serverTimestamp(),
+              roles:['user'], blocked:false
+            });
+          }catch(_){}
+          me.nickname = finalNick; me.gender = gender;
           if(finalNick !== base){
             await postSystemNotice(`检测到昵称重名，已自动更名为 @${finalNick}`);
           }
         }else{
-          me = s.data();
+          const d = s.data();
+          me.nickname = d.nickname || base;
+          me.gender = d.gender || 'unset';
+          me.roles = d.roles || ['user'];
         }
-        renderMe(); renderSamples(); setMode();
+      }catch(_){
+        // 完全不用 users：使用本地默认昵称（不阻塞）
+        me.nickname = base; me.gender = gender; me.roles = ['user'];
+        await postSystemNotice(`用户加入：@${me.nickname}`);
+      }
 
-        // 订阅用户
+      renderMe(); renderSamples(); setMode();
+
+      // 订阅用户（失败则忽略）
+      try{
         onSnapshot(query(collection(db,'users'), orderBy('createdAt','asc')), snap=>{
           const arr=[]; snap.forEach(d=>arr.push(d.data())); renderUsers(arr);
         });
+      }catch(_){/* ignore */}
 
-        // 订阅公聊
-        onSnapshot(query(collection(db,'messages'), orderBy('createdAt','asc')), snap=>{
-          el.msgs.innerHTML=''; snap.forEach(d=>renderMsg(d.data()));
-        });
+      // 订阅公聊
+      onSnapshot(query(collection(db,'messages'), orderBy('createdAt','asc')), snap=>{
+        el.msgs.innerHTML=''; snap.forEach(d=>renderMsg(d.data()));
+      });
 
-        toast('已连接','ok');
-      }catch(e){
-        toast('初始化失败：'+e.message);
-      }
+      toast('已连接','ok');
     });
 
     // 网络提示
