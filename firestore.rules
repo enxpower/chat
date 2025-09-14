@@ -4,7 +4,7 @@ service cloud.firestore {
 
     function isAuth() { return request.auth != null; }
 
-    // ===== 用户档案（可选：仅本人可写）=====
+    // ===== 用户档案（可选）=====
     match /users/{uid} {
       allow read: if isAuth();
       allow create, update: if isAuth() && request.auth.uid == uid;
@@ -14,38 +14,34 @@ service cloud.firestore {
     // ===== 昵称占用表（全局唯一）=====
     match /nicknames/{name} {
       allow read: if true;
-      // 只要已认证即可创建；不可覆盖已有文档
       allow create: if isAuth() && !exists(resource.path);
       allow update, delete: if false;
     }
 
-    // ===== 公聊消息（频道 #general）=====
+    // ===== 公聊消息 =====
     match /messages/{msgId} {
-      allow read: if true;           // 任何人可读（也可改成 isAuth()）
-      allow create: if isAuth();     // 匿名登录即可发
+      allow read: if true;       // 或改 isAuth()
+      allow create: if isAuth(); // 匿名即可发
       allow update, delete: if false;
     }
 
-    // ===== 私聊线程 =====
-    // 仅参与者可读写子消息（后端强制“仅双方可见”）
-    function dmParticipants(tid) {
-      return get(/databases/$(database)/documents/dmThreads/$(tid)).data.participants;
-    }
-    function inDm(tid) {
-      return isAuth() && (request.auth.uid in dmParticipants(tid));
-    }
-
+    // ===== 私聊线程（仅参与者可读写）=====
     match /dmThreads/{tid} {
-      // 允许任何已认证用户创建线程文档（前端会写 participants: [uid1, uid2]）
-      allow create: if isAuth();
-      // 只有参与者能读取线程文档本身
-      allow read: if inDm(tid);
+      // 创建时即校验 participants
+      allow create: if isAuth()
+                    && (request.resource.data.participants is list)
+                    && request.resource.data.participants.size() == 2
+                    && request.auth.uid in request.resource.data.participants;
 
-      // 线程下的消息
+      // 读取线程文档：必须是参与者
+      allow read: if isAuth()
+                  && (request.auth.uid in resource.data.participants);
+
+      // 线程下的消息：必须是参与者
       match /messages/{mid} {
-        // 只有参与者能看并能发
-        allow read: if inDm(tid);
-        allow create: if inDm(tid);
+        allow read, create: if isAuth()
+          && (request.auth.uid in
+              get(/databases/$(database)/documents/dmThreads/$(tid)).data.participants);
         allow update, delete: if false;
       }
     }
