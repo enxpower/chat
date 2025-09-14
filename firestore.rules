@@ -4,13 +4,28 @@ service cloud.firestore {
 
     function isAuth() { return request.auth != null; }
 
-    // ========== 公聊 ==========
-    match /messages/{id} {
-      allow read: if true;        // 想更严可以改 isAuth()
-      allow create: if isAuth();  // 匿名可发
+    // ===== 用户档案（在线用户列表用）=====
+    match /users/{uid} {
+      allow read: if isAuth();                         // 已登录即可读在线用户
+      allow create, update: if isAuth() && request.auth.uid == uid; // 仅本人可写
+      allow delete: if false;
     }
 
-    // ========== 私聊（基于 TID 权限）==========
+    // ===== 昵称占用表（可选，做唯一昵称）=====
+    match /nicknames/{name} {
+      allow read: if true;
+      allow create: if isAuth() && !exists(resource.path);
+      allow update, delete: if false;
+    }
+
+    // ===== 公聊 =====
+    match /messages/{id} {
+      allow read: if true;        // 想更严谨可改成 isAuth()
+      allow create: if isAuth();  // 匿名即可发
+      allow update, delete: if false;
+    }
+
+    // ===== 私聊（基于 TID 授权，既顺滑又私密）=====
     // 约定：tid = smallerUID + '_' + largerUID
     function inTid(tid) {
       return isAuth() &&
@@ -19,14 +34,12 @@ service cloud.firestore {
     }
 
     match /dmThreads/{tid} {
-      // 随便创建，不做字段校验（避免“写之前先读”的阻碍）
-      allow create: if isAuth();
-      // 只有 TID 含自己 UID 的人能读线程
-      allow read:   if inTid(tid);
+      allow create: if isAuth();       // 允许直接创建（避免“先读被拦”）
+      allow read:   if inTid(tid);     // 仅 TID 含自己 UID 的人能读
 
       match /messages/{mid} {
-        // 只有 TID 含自己 UID 的人能读/发该线程消息
-        allow read, create: if inTid(tid);
+        allow read, create: if inTid(tid);   // 仅双方可看/发
+        allow update, delete: if false;
       }
     }
   }
