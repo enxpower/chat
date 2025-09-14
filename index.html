@@ -53,12 +53,25 @@
     .t.err{border-color:#fecaca;background:#fff1f2;color:var(--red)}
     .t.ok{border-color:#bbf7d0;background:#ecfdf5;color:var(--green)}
     a{color:#111;text-decoration:none}
+
+    /* 状态条 */
+    .status{position:sticky;top:0;z-index:10;display:flex;gap:8px;align-items:center;
+      margin:10px auto 0;max-width:1200px;padding:8px 12px;border-radius:12px;
+      border:1px solid var(--line);box-shadow:var(--shadow);background:#ffffffcc;
+      backdrop-filter:saturate(180%) blur(8px)}
+    .status .dot{width:8px;height:8px;border-radius:999px;background:#f59e0b;animation:bl 1.2s infinite}
+    .status.ok .dot{background:#10b981}
+    .status.err .dot{background:#ef4444}
+    @keyframes bl{0%{opacity:.4}50%{opacity:1}100%{opacity:.4}}
   </style>
 </head>
 <body>
   <header>
     <div class="brand">中文聊天室 · 公聊 + 私聊（打勾）</div>
   </header>
+
+  <!-- ✅ 就绪状态条 -->
+  <div id="status" class="status"><span class="dot"></span><span id="statusText">正在连接 Firebase…</span></div>
 
   <div class="wrap">
     <!-- 左侧 -->
@@ -150,14 +163,25 @@
       dmchk:$('dmchk'), mode:$('mode'), toast:$('toast')
     };
 
+    // —— 状态条 —— //
+    const statusBar = document.getElementById('status');
+    const statusText = document.getElementById('statusText');
+    function setStatus(kind, text, autohideMs){
+      statusBar.className = 'status ' + (kind||'');
+      statusText.textContent = text || '';
+      statusBar.style.display = 'flex';
+      if(autohideMs){ setTimeout(()=>{ statusBar.style.display='none'; }, autohideMs); }
+    }
+
+    // 初始禁用输入（连接成功后启用）
+    el.input.disabled = true; el.send.disabled = true;
+
     // 状态
     let me = { uid:null, nickname:'guest', gender:'unset', roles:['user'] };
     let dmTarget = null;
+    let unsubPublic = null, unsubDM = null;
 
-    // ===== 订阅与切换（公聊 / 私聊） =====
-    let unsubPublic = null;
-    let unsubDM = null;
-
+    // ===== 公聊/私聊订阅与切换 =====
     function currentTid(){
       if(!me?.uid || !dmTarget?.uid) return null;
       const a = me.uid < dmTarget.uid ? me.uid : dmTarget.uid;
@@ -166,25 +190,59 @@
     }
 
     function startPublic(){
-      if (unsubDM) { unsubDM(); unsubDM=null; }
+      if (unsubDM){ unsubDM(); unsubDM=null; }
       if (unsubPublic) return;
       el.msgs.innerHTML = '';
       unsubPublic = onSnapshot(
         query(collection(db,'messages'), orderBy('createdAt','asc')),
         snap => { el.msgs.innerHTML=''; snap.forEach(d=>renderMsg(d.data())); },
-        err  => { toast('公聊订阅失败：'+err.message); }
+        err  => { setStatus('err', '公聊订阅失败：'+(err.code||err.message)); }
       );
     }
 
-    function startDM(tid){
-      if (unsubPublic) { unsubPublic(); unsubPublic=null; }
-      if (unsubDM) { unsubDM(); unsubDM=null; }
+    // 预建线程（并返回明确错误）
+    async function ensureDmThread(tid){
+      const tRef = doc(db,'dmThreads', tid);
+      try{
+        const exists = (await getDoc(tRef)).exists();
+        if(!exists){
+          await setDoc(tRef, { participants: [me.uid, dmTarget.uid] }, { merge:true });
+        }
+        return { ok:true };
+      }catch(e){
+        return { ok:false, code:e.code || 'unknown', msg:e.message || String(e) };
+      }
+    }
+
+    function diagnoseDmError(code, msg, phase){
+      let reason = '';
+      switch(code){
+        case 'permission-denied':
+          reason = 'Rules 拒绝。检查：是否使用“仅参与者可读写 dmThreads/*/messages”的规则；participants 是否包含双方 UID。'; break;
+        case 'unavailable':
+          reason = '网络或 Firestore 暂不可用（离线/超时）。'; break;
+        case 'not-found':
+          reason = '线程不存在且规则禁止自动创建；或 get() 被拒。'; break;
+        default:
+          reason = '未知：' + (code || msg);
+      }
+      toast(`私聊${phase}失败（${code||'unknown'}）：${reason}`);
+      postSystemNotice(`私聊${phase}失败（${code||'unknown'}），已回到公聊。`);
+    }
+
+    async function startDM(tid){
+      if (unsubPublic){ unsubPublic(); unsubPublic=null; }
+      if (unsubDM){ unsubDM(); unsubDM=null; }
       el.msgs.innerHTML = '';
+
+      const pre = await ensureDmThread(tid);
+      if(!pre.ok){ diagnoseDmError(pre.code, pre.msg, '创建/读取线程'); startPublic(); return; }
+
       const dmCol = collection(db,'dmThreads', tid, 'messages');
       unsubDM = onSnapshot(
         query(dmCol, orderBy('createdAt','asc')),
         snap => { el.msgs.innerHTML=''; snap.forEach(d=>renderMsg(d.data())); },
-        err  => { toast('私聊订阅失败：'+err.message); startPublic(); }
+        err  => { diagnoseDmError(err.code, err.message, '订阅消息'); startPublic(); }
       );
     }
 
@@ -199,7 +257,7 @@
       }
     }
 
-    // ===== UI 工具 =====
+    // ===== UI 工具 & 渲染 =====
     function toast(text, type='err'){
       const t = document.createElement('div');
       t.className = 't '+(type==='ok'?'ok':'err');
@@ -231,21 +289,15 @@
           const uid = p.dataset.uid, nick = p.dataset.nick;
 
           if(!selectable){
-            // 示例账号：只做 @ 引导，并强制回到公聊
             const at = '@'+nick+' ';
             if(!el.input.value.startsWith(at)) el.input.value = at + el.input.value;
-            el.dmchk.checked = false;
-            dmTarget = null;
-            switchFeed();
+            el.dmchk.checked = false; dmTarget = null; switchFeed();
             postSystemNotice(`“${nick}”为示例账号，仅用于 @ 演示，不能私聊`);
             el.input.focus();
             return;
           }
 
-          if(uid){
-            dmTarget = { uid, nickname:nick };
-            switchFeed();
-          }
+          if(uid){ dmTarget = { uid, nickname:nick }; switchFeed(); }
         };
       });
     }
@@ -336,9 +388,8 @@
     }
 
     async function send(){
-      if(!me?.uid){ return toast('尚未连接后端'); }
       const text = el.input.value.trim();
-      if(!text) return;
+      if(!text || !me?.uid) return;
 
       try{
         if(el.dmchk.checked && dmTarget?.uid){
@@ -388,7 +439,7 @@
     });
 
     // —— 启动：匿名登录；users 失败也不影响聊天 —— //
-    signInAnonymously(auth).catch(e=>toast('匿名登录失败：'+e.message));
+    signInAnonymously(auth).catch(e=>setStatus('err','匿名登录失败：'+e.message));
     onAuthStateChanged(auth, async (u)=>{
       if(!u) return;
       me.uid = u.uid;
@@ -426,7 +477,9 @@
       }
 
       renderMe(); renderSamples();
-      switchFeed(); // 初始进入公聊订阅
+      switchFeed();                 // 首次订阅（公聊）
+      setStatus('ok','已就绪', 1500); // ✅ 清晰显示几秒就绪
+      el.input.disabled = false; el.send.disabled = false;
 
       // 订阅用户（失败忽略）
       try{
@@ -434,13 +487,11 @@
           const arr=[]; snap.forEach(d=>arr.push(d.data())); renderUsers(arr);
         });
       }catch(_){}
-
-      toast('已连接','ok');
     });
 
-    // 网络提示
-    window.addEventListener('online', ()=>toast('网络已恢复','ok'));
-    window.addEventListener('offline', ()=>toast('网络不可用'));
+    // 网络提示（状态条说明）
+    window.addEventListener('online', ()=>setStatus('ok','网络已恢复', 1200));
+    window.addEventListener('offline', ()=>setStatus('err','网络不可用'));
   </script>
 </body>
 </html>
