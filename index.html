@@ -8,7 +8,7 @@
     :root{
       --fg:#0f172a; --muted:#6b7280; --line:#e5e7eb; --bg:#f8fafc; --card:#ffffff;
       --male:#2563eb; --female:#d946ef; --unset:#64748b;
-      --accent:#111827; --shadow:0 8px 24px rgba(2,6,23,.06);
+      --shadow:0 8px 24px rgba(2,6,23,.06);
       --green:#065f46; --red:#b91c1c;
     }
     *{box-sizing:border-box}
@@ -169,13 +169,13 @@
       el.meNick.textContent = '@'+(me.nickname||'guest');
       el.meNick.className = gcls(me.gender||'unset');
       el.meRole.textContent = (me.roles||['user']).includes('admin') ? 'admin' : 'user';
-      el.nickInput.value = me.nickname||'';
-      el.genderInput.value = me.gender||'unset';
+      el.nickInput.value = me.nickname || '';
+      el.genderInput.value = me.gender || 'unset';
     }
 
     function setMode(){
       if(!dmTarget){ el.mode.textContent = '频道：#general（未选人 → 公聊）'; return; }
-      el.mode.textContent = dmChecked ? `🔒 私聊对象：@${dmTarget.nickname}` : `🗣️ 公屏并 @${dmTarget.nickname}`;
+      el.mode.textContent = el.dmchk.checked ? `🔒 私聊对象：@${dmTarget.nickname}` : `🗣️ 公屏并 @${dmTarget.nickname}`;
     }
 
     function pill(u, selectable=true){
@@ -228,32 +228,67 @@
       el.msgs.scrollTop = el.msgs.scrollHeight;
     }
 
-    // Firestore：昵称唯一占用
-    async function occupyNickname(name, uid){
-      const ref = doc(db,'nicknames', name);
-      const snap = await getDoc(ref);
-      if(snap.exists()) return false;
-      await setDoc(ref, { uid }); // 仅在成功时写入
-      return true;
+    // —— 在公聊频道发系统提示 —— //
+    async function postSystemNotice(text){
+      try{
+        await addDoc(collection(db,'messages'), {
+          from:{ uid:'system', nickname:'系统', gender:'unset' },
+          to:null, isPrivate:false,
+          text:`【系统】${text}`,
+          createdAt: serverTimestamp(), recalled:false, deleted:false
+        });
+      }catch(e){ /* 静默失败 */ }
     }
 
-    // 保存档案（不写 mutedUntil 字段，避免规则比较报错）
-    async function saveProfile(){
-      const name = el.nickInput.value.trim();
-      if(!name) return toast('昵称不能为空');
-      if(name !== me.nickname){
-        const ok = await occupyNickname(name, me.uid).catch(()=>false);
-        if(!ok) return toast('昵称已被占用');
+    // —— 自动递增占用昵称：base, base_2, base_3… —— //
+    async function claimNicknameAuto(base, uid){
+      const tryName = async (name)=>{
+        const ref = doc(db,'nicknames', name);
+        const snap = await getDoc(ref);
+        if(snap.exists()) return false;
+        await setDoc(ref, { uid });
+        return true;
+      };
+      // 先试 base，不行就 _2 起步
+      let n = 1;
+      let finalName = base;
+      let ok = await tryName(finalName);
+      while(!ok && n<50){
+        n += 1;
+        finalName = `${base}_${n}`;
+        ok = await tryName(finalName);
       }
+      return finalName; // 一定是成功占用的名字
+    }
+
+    // 保存档案（不写 mutedUntil，避免规则比较问题）
+    async function saveProfile(){
+      const desired = el.nickInput.value.trim();
+      if(!desired) return toast('昵称不能为空'); // 本地轻提醒，不阻塞聊天
       const gender = el.genderInput.value;
+
+      // 改名则自动占用（重名自动 +1），不报错
+      let finalName = me.nickname;
+      if(desired !== me.nickname){
+        finalName = await claimNicknameAuto(desired, me.uid);
+      }
+
       await setDoc(doc(db,'users', me.uid), {
-        uid: me.uid, nickname:name, gender,
+        uid: me.uid, nickname: finalName, gender,
         lastSeenAt: serverTimestamp(),
-        roles: me.roles||['user'], blocked:false    // ⚠️ 不写 mutedUntil
+        roles: me.roles||['user'], blocked:false
       }, {merge:true});
-      me.nickname=name; me.gender=gender;
+
+      // 若发生自动 +1，在公聊发系统提示
+      if(finalName !== desired){
+        await postSystemNotice(`昵称 @${desired} 已被占用，已自动更名为 @${finalName}`);
+      }else if(finalName !== me.nickname){
+        await postSystemNotice(`用户将昵称修改为 @${finalName}`);
+      }
+
+      me.nickname = finalName; me.gender = gender;
       renderMe();
-      toast('已保存', 'ok');
+      toast('已保存','ok');
     }
 
     async function send(){
@@ -284,7 +319,7 @@
         el.input.value='';
       }catch(e){
         if(String(e.message||'').includes('Missing or insufficient permissions')) {
-          toast('权限不足：请确认 Firestore 规则 & 确保用户档案存在（且未写 mutedUntil=null）');
+          toast('权限不足：请检查 Firestore 规则 & 确保用户档案存在（且未写 mutedUntil=null）');
         } else {
           toast('发送失败：'+e.message);
         }
@@ -307,7 +342,7 @@
       });
     });
 
-    // 启动：匿名登录 → 初始化用户（默认分配但不强迫更改）
+    // 启动：匿名登录 → 初始化用户（默认分配；重名自动+1；不阻塞聊天）
     signInAnonymously(auth).catch(e=>toast('匿名登录失败：'+e.message));
     onAuthStateChanged(auth, async (u)=>{
       if(!u) return;
@@ -315,20 +350,27 @@
         const uref = doc(db,'users', u.uid);
         const s = await getDoc(uref);
         if(!s.exists()){
-          // 默认给一个昵称/性别（可在侧栏自行修改；不占用就重试几次）
+          // 默认给一个昵称/性别（不强迫更改）
           const males = ['阿强','建国','一鸣','子轩','志远','浩然'];
           const females = ['美琳','可欣','语桐','嘉怡','若兰','欣怡'];
           const rnd = (arr)=>arr[Math.floor(Math.random()*arr.length)];
           let gender = Math.random()<.5?'male':'female';
-          let nickname = (gender==='male'?rnd(males):rnd(females)) + Math.floor(Math.random()*90+10);
-          let tries=0, ok=false, pick=nickname;
-          while(!ok && tries<3){ ok = await occupyNickname(pick, u.uid).catch(()=>false); if(!ok){ pick = nickname + Math.floor(Math.random()*90+10); tries++; } }
+          let base = (gender==='male'?rnd(males):rnd(females)) + Math.floor(Math.random()*90+10);
+
+          // 自动递增占用（无报错）
+          const finalNick = await claimNicknameAuto(base, u.uid);
+
           await setDoc(uref, {
-            uid:u.uid, nickname: pick, gender,
+            uid:u.uid, nickname: finalNick, gender,
             createdAt: serverTimestamp(), lastSeenAt: serverTimestamp(),
-            roles:['user'], blocked:false   // ⚠️ 不写 mutedUntil
+            roles:['user'], blocked:false
           });
-          me = { uid:u.uid, nickname:pick, gender, roles:['user'] };
+          me = { uid:u.uid, nickname:finalNick, gender, roles:['user'] };
+
+          // 若发生自动 +1，在公聊提示
+          if(finalNick !== base){
+            await postSystemNotice(`检测到昵称重名，已自动更名为 @${finalNick}`);
+          }
         }else{
           me = s.data();
         }
@@ -350,7 +392,7 @@
       }
     });
 
-    // 网络提示更柔和
+    // 网络提示
     window.addEventListener('online', ()=>toast('网络已恢复','ok'));
     window.addEventListener('offline', ()=>toast('网络不可用'));
   </script>
