@@ -3,124 +3,310 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>聊天室 · 公聊最小版</title>
+  <title>中文聊天室 · 公聊 + 私聊（打勾）</title>
   <style>
-    *{box-sizing:border-box} body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,Noto Sans,sans-serif;margin:16px}
-    h1{font-size:18px;margin:0 0 8px}
-    .wrap{border:1px solid #e5e7eb;border-radius:12px;padding:12px;display:flex;flex-direction:column;height:85vh}
-    .msgs{flex:1;overflow:auto;border:1px solid #e5e7eb;border-radius:10px;padding:8px;background:#fafafa}
+    :root{
+      --fg:#111;--muted:#666;--box:#e5e7eb;--bg:#fff;--chip:#f3f4f6;--accent:#111;
+      --male:#1d4ed8;--female:#d946ef;--unset:#6b7280;--danger:#b91c1c;--ok:#065f46
+    }
+    *{box-sizing:border-box}
+    body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,"Noto Sans",sans-serif;color:var(--fg);margin:14px;background:var(--bg)}
+    h1{font-size:18px;margin:0 0 10px}
+    .app{display:flex;gap:12px}
+    .left{width:260px;border:1px solid var(--box);border-radius:12px;padding:12px;background:#fff;display:flex;flex-direction:column;max-height:86vh}
+    .right{flex:1;border:1px solid var(--box);border-radius:12px;padding:12px;background:#fff;display:flex;flex-direction:column;max-height:86vh}
+    .me{font-size:13px;color:var(--muted);margin-bottom:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .edit{border:1px solid var(--box);background:#fff;border-radius:8px;padding:4px 8px;cursor:pointer}
+    .list{flex:1;overflow:auto;border:1px solid var(--box);border-radius:10px;padding:8px;background:#fafafa}
+    .grp{font-size:12px;color:var(--muted);margin:6px 0 4px}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;margin:4px 6px 4px 0;border:1px solid var(--box);border-radius:999px;background:#fff;cursor:pointer}
+    .male{color:var(--male)} .female{color:var(--female)} .unset{color:var(--unset)}
+    .badge{font-size:10px;border:1px solid var(--box);border-radius:999px;padding:0 6px;color:var(--muted);background:#fff}
+    .msgs{flex:1;overflow:auto;border:1px solid var(--box);border-radius:10px;padding:8px;background:#fafafa}
     .msg{margin:8px 0;line-height:1.45}
-    .nick{font-weight:600}
-    .male{color:#1d4ed8}.female{color:#d946ef}.unset{color:#6b7280}
+    .nick{font-weight:600;cursor:pointer}
     .row{display:flex;gap:8px;align-items:center;margin-top:8px}
-    textarea{flex:1;min-height:46px;resize:vertical}
-    button{border:1px solid #e5e7eb;background:#fff;border-radius:8px;padding:6px 12px;cursor:pointer}
-    .hint{color:#6b7280;font-size:12px;margin-top:6px}
-    .error{color:#b91c1c;font-size:12px;margin-top:6px;white-space:pre-wrap}
+    textarea{flex:1;min-height:54px;resize:vertical;border:1px solid var(--box);border-radius:10px;padding:8px}
+    button{border:1px solid var(--box);background:#fff;border-radius:10px;padding:8px 14px;cursor:pointer}
+    .hint{color:var(--muted);font-size:12px;margin-top:6px}
+    .banner{display:none;margin:0 0 8px;padding:8px;border-radius:10px}
+    .banner.err{display:block;background:#fee2e2;border:1px solid #fecaca;color:var(--danger)}
+    .banner.ok{display:block;background:#dcfce7;border:1px solid #bbf7d0;color:var(--ok)}
+    .chip{display:inline-flex;align-items:center;gap:6px;border:1px dashed var(--box);border-radius:999px;padding:4px 10px;background:var(--chip);cursor:pointer;margin-right:6px}
+    .sel{outline:2px solid #1112}
   </style>
 </head>
 <body>
-  <h1>聊天室 · 公聊最小版</h1>
-  <div class="wrap">
-    <div id="me" class="hint">初始化中…</div>
-    <div id="msgs" class="msgs"></div>
-    <div class="row">
-      <textarea id="input" placeholder="输入消息，Enter 发送；Shift+Enter 换行"></textarea>
-      <button id="send">发送</button>
-    </div>
-    <div id="hint" class="hint">未选择任何对象 → 一律公聊</div>
-    <div id="err" class="error"></div>
+  <h1>中文聊天室 · 公聊 + 私聊（打勾）</h1>
+  <div id="net" class="banner"></div>
+  <div class="app">
+    <aside class="left">
+      <div id="me" class="me">初始化中…</div>
+      <div class="grp">在线用户</div>
+      <div id="users" class="list"></div>
+      <div class="grp">示例账号（本地，不占后端）</div>
+      <div id="samples" class="list" style="min-height:72px"></div>
+    </aside>
+
+    <main class="right">
+      <div id="mode" class="hint">频道：#general（未选人 → 公聊）</div>
+      <div id="msgs" class="msgs"></div>
+
+      <div class="row">
+        <label class="hint" style="display:flex;align-items:center;gap:6px">
+          <input id="dmchk" type="checkbox" checked />
+          私聊打勾（勾选=仅双方可见；不勾选=公屏并自动 @）
+        </label>
+      </div>
+
+      <div class="row">
+        <textarea id="input" placeholder="输入消息…  Enter 发送；Shift+Enter 换行"></textarea>
+        <button id="send">发送</button>
+      </div>
+
+      <div class="hint">
+        快捷 @： <span class="chip" data-at="@系统通知">@系统通知</span>
+        <span class="chip" data-at="@管理员A">@管理员A</span>
+        <span class="chip" data-at="@访客B">@访客B</span>
+      </div>
+    </main>
   </div>
 
-  <!-- Firebase v9 模块 CDN -->
+  <!-- Firebase v9 模块 CDN（注意：不要带任何省略号） -->
   <script type="module">
+    // —— 正确加载配置 —— //
+    async function loadConfig(){
+      const res = await fetch('./firebaseConfig.json', {cache:'no-store'});
+      if(!res.ok) throw new Error('无法读取 firebaseConfig.json');
+      return await res.json();
+    }
+
+    const cfg = await loadConfig();
+
+    // —— Firebase SDK —— //
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
     import {
       getFirestore, serverTimestamp, doc, getDoc, setDoc, addDoc, collection,
-      query, orderBy, limit, onSnapshot
+      query, orderBy, onSnapshot, updateDoc, where, getDocs
     } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-    // ====== 关键：只做公聊；只要这三步：匿名登录 -> 建 users 文档 -> 发/收 messages ======
-
-    // 1) 读取你的 firebaseConfig.json（保持你仓库里的文件不变）
-    const cfg = await fetch('./firebaseConfig.json').then(r=>r.json());
-
-    // 2) 初始化
-    const app = initializeApp(cfg);
+    const app  = initializeApp(cfg);
     const auth = getAuth(app);
-    const db = getFirestore(app);
+    const db   = getFirestore(app);
 
-    // 3) 简单工具
-    const $ = id => document.getElementById(id);
-    const msgsEl = $('msgs'), inputEl = $('input'), sendBtn = $('send'), errEl = $('err'), meEl = $('me');
-    const clsByGender = g => g==='male'?'male':g==='female'?'female':'unset';
-    const rand = n => Math.floor(Math.random()*n);
-    const randNick = ()=> `guest_${rand(10)}${rand(10)}${rand(10)}${rand(10)}`;
-    const randGender = ()=> ['male','female','unset'][rand(3)];
+    // —— DOM refs —— //
+    const el = {
+      net: document.getElementById('net'),
+      me: document.getElementById('me'),
+      users: document.getElementById('users'),
+      samples: document.getElementById('samples'),
+      msgs: document.getElementById('msgs'),
+      input: document.getElementById('input'),
+      send: document.getElementById('send'),
+      dmchk: document.getElementById('dmchk'),
+      mode: document.getElementById('mode'),
+      chips: [...document.querySelectorAll('[data-at]')],
+    };
 
-    let me = null; // { uid, nickname, gender }
+    // —— 本地状态 —— //
+    let me = null;               // {uid, nickname, gender, roles[]}
+    let dmTarget = null;         // { uid, nickname, gender }
+    let dmChecked = true;
 
-    // 显示错误
-    function showErr(e){
-      console.error(e);
-      errEl.textContent = (e && e.message) ? e.message : String(e||'未知错误');
+    // —— 工具 —— //
+    const males = ['阿强','建国','一鸣','子轩','志远','浩然'];
+    const females = ['美琳','可欣','语桐','嘉怡','若兰','欣怡'];
+    const rnd = (arr)=>arr[Math.floor(Math.random()*arr.length)];
+    const randGender = ()=> (Math.random() < 0.5 ? 'male':'female');
+    const randNick = ()=> (randGender()==='male' ? rnd(males) : rnd(females)) + Math.floor(Math.random()*90+10);
+
+    const clsByGender = (g)=> g==='male'?'male':(g==='female'?'female':'unset');
+
+    function banner(type, text){
+      el.net.className = 'banner ' + (type==='err'?'err':'ok');
+      el.net.textContent = text;
+      if(type!=='err'){ setTimeout(()=>{el.net.className='banner';}, 1600); }
     }
 
-    // 订阅公聊
-    function mountPublicMessages(){
-      const q = query(collection(db,'messages'), orderBy('createdAt','asc'), limit(500));
-      onSnapshot(q, snap=>{
-        msgsEl.innerHTML = '';
-        snap.forEach(d=>{
-          const m = d.data();
-          const div = document.createElement('div');
-          div.className = 'msg';
-          const gcls = clsByGender(m.from?.gender||'unset');
-          const text = m.recalled ? '（该消息已撤回）'
-                    : m.deleted ? '（该消息已删除，仅作者可见）'
-                    : (m.text || '');
-          div.innerHTML = `<span class="nick ${gcls}">@${m.from?.nickname||'匿名'}</span>: ${text}`;
-          msgsEl.appendChild(div);
+    function setModeHint(){
+      if(!dmTarget){ el.mode.textContent = '频道：#general（未选人 → 公聊）'; return; }
+      el.mode.textContent = dmChecked ? `🔒 私聊对象：@${dmTarget.nickname}` : `🗣️ 公屏发言并 @${dmTarget.nickname}`;
+    }
+
+    function scrollToBottom(){ el.msgs.scrollTop = el.msgs.scrollHeight; }
+
+    function pill(u, selectable=true){
+      const cls = clsByGender(u.gender||'unset');
+      const admin = (u.roles||[]).includes('admin') ? '<span class="badge">admin</span>' : '';
+      const cur = me && u.uid===me.uid ? ' sel' : '';
+      return `<span class="pill ${cls}${cur}" data-uid="${u.uid||''}" data-nick="${u.nickname||''}" data-selectable="${selectable?1:0}">
+                <strong>@${u.nickname||'未知'}</strong> ${admin}
+              </span>`;
+    }
+
+    function bindPills(container){
+      [...container.querySelectorAll('.pill')].forEach(p=>{
+        p.addEventListener('click', ()=>{
+          const selectable = p.dataset.selectable === '1';
+          const uid = p.dataset.uid, nick = p.dataset.nick;
+          if(!selectable){
+            // 示例账号 → 在输入框插入 @昵称
+            const at = '@'+nick+' ';
+            if(!el.input.value.startsWith(at)) el.input.value = at + el.input.value;
+            el.input.focus();
+            dmTarget = null; setModeHint(); // 不进入私聊
+            return;
+          }
+          if(uid){
+            dmTarget = { uid, nickname:nick, gender:'unset' };
+            setModeHint();
+          }
         });
-        msgsEl.scrollTop = msgsEl.scrollHeight;
-      }, showErr);
+      });
     }
 
-    // 发送公聊消息
-    async function sendPublicMessage(){
-      errEl.textContent = '';
-      const text = (inputEl.value || '').trim();
-      if(!text) return;
-      if(!me){ showErr('尚未初始化完成'); return; }
+    function renderUsers(list){
+      el.users.innerHTML = list.map(u=>pill(u,true)).join('');
+      bindPills(el.users);
+    }
+
+    function renderSamples(){
+      const samples = [
+        {nickname:'系统通知', gender:'unset'},
+        {nickname:'管理员A', gender:'male'},
+        {nickname:'访客B', gender:'female'}
+      ];
+      el.samples.innerHTML = samples.map(s=>pill({nickname:s.nickname,gender:s.gender}, false)).join('');
+      bindPills(el.samples);
+    }
+
+    function renderMsg(m){
+      const gcls = clsByGender(m.from?.gender||'unset');
+      const nick = `<span class="nick ${gcls}" data-uid="${m.from?.uid||''}" data-nick="${m.from?.nickname||''}">@${m.from?.nickname||'未知'}</span>`;
+      const scope = m.isPrivate ? '🔒 ' : '';
+      const body = m.recalled ? '<span class="hint">（已撤回）</span>' :
+                (m.deleted ? '<span class="hint">（已删除，仅作者可见）</span>' :
+                  (m.text||'').replace(/@([\u4e00-\u9fa5\w]+)/g, '<strong>@$1</strong>'));
+      const div = document.createElement('div');
+      div.className = 'msg';
+      div.innerHTML = `${scope}${nick}：${body}`;
+      div.querySelector('.nick')?.addEventListener('click', (e)=>{
+        const uid = e.target.dataset.uid, nick = e.target.dataset.nick;
+        if(uid){ dmTarget = { uid, nickname:nick, gender:'unset' }; setModeHint(); }
+      });
+      el.msgs.appendChild(div);
+      scrollToBottom();
+    }
+
+    async function ensureUniqueNickname(desired){
+      // nicknames/{name} 文档占用表
+      const ref = doc(db,'nicknames', desired);
+      const snap = await getDoc(ref);
+      if(snap.exists()) return false;
+      await setDoc(ref, { uid: me.uid });
+      return true;
+    }
+
+    async function changeProfile(){
+      const nn = prompt('修改昵称（需唯一）：', me.nickname || '');
+      if(!nn) return;
+      if(nn!==me.nickname){
+        const ok = await ensureUniqueNickname(nn).catch(()=>false);
+        if(!ok){ banner('err','昵称已被占用'); return; }
+      }
+      let g = prompt('性别：male / female / unset', me.gender || 'unset');
+      g = (g||'unset').toLowerCase();
+      await setDoc(doc(db,'users', me.uid), {
+        ...me, nickname: nn, gender: g, lastSeenAt: serverTimestamp()
+      }, {merge:true});
+      me.nickname = nn; me.gender = g;
+      renderMe();
+    }
+
+    function renderMe(){
+      const cls = clsByGender(me.gender||'unset');
+      const admin = (me.roles||[]).includes('admin') ? '<span class="badge">admin</span>' : '';
+      el.me.innerHTML = `
+        <span>我：<strong class="${cls}">@${me.nickname}</strong>（${me.gender}）${admin}</span>
+        <button class="edit" id="btnEdit">编辑昵称/性别</button>
+        <button class="edit" id="btnClearDM">清除私聊对象</button>
+      `;
+      document.getElementById('btnEdit').onclick = changeProfile;
+      document.getElementById('btnClearDM').onclick = ()=>{ dmTarget=null; setModeHint(); };
+    }
+
+    function subscribeUsers(){
+      const q = query(collection(db,'users'), orderBy('createdAt','asc'));
+      onSnapshot(q, snap=>{
+        const arr = []; snap.forEach(d=>arr.push(d.data()));
+        renderUsers(arr);
+      }, err=>{
+        banner('err', '用户列表加载失败：'+err.message);
+      });
+    }
+
+    function subscribePublic(){
+      const q = query(collection(db,'messages'), orderBy('createdAt','asc'));
+      onSnapshot(q, snap=>{
+        el.msgs.innerHTML = '';
+        snap.forEach(d=>renderMsg(d.data()));
+      }, err=>{
+        banner('err','消息订阅失败：'+err.message);
+      });
+    }
+
+    async function send(){
+      if(!me) return;
+      const txt = el.input.value.trim();
+      if(!txt) return;
 
       try{
-        await addDoc(collection(db,'messages'), {
-          from: { uid: me.uid, nickname: me.nickname, gender: me.gender },
-          to: null,
-          isPrivate: false,
-          text,
-          emoji: [],
-          mentions: [],
-          createdAt: serverTimestamp(),
-          recalled: false,
-          deleted: false
-        });
-        inputEl.value = '';
-        msgsEl.scrollTop = msgsEl.scrollHeight;
-      }catch(e){ showErr(e); }
+        if(dmTarget && dmChecked){
+          // 私聊
+          const a = me.uid < dmTarget.uid ? me.uid : dmTarget.uid;
+          const b = me.uid < dmTarget.uid ? dmTarget.uid : me.uid;
+          const tid = `${a}_${b}`;
+          await setDoc(doc(db,'dmThreads', tid), { participants:[a,b] }, {merge:true});
+          await addDoc(collection(db,'dmThreads', tid, 'messages'), {
+            from:{ uid:me.uid, nickname:me.nickname, gender:me.gender },
+            to:dmTarget.uid, isPrivate:true,
+            text: txt, emoji:[], mentions:[],
+            createdAt: serverTimestamp(), recalled:false, deleted:false
+          });
+          banner('ok','已发送私聊消息');
+        }else{
+          // 公聊（若选了对象但不打勾 → 自动 @ 对方）
+          const t = (dmTarget && !dmChecked) ? `@${dmTarget.nickname} ${txt}` : txt;
+          await addDoc(collection(db,'messages'), {
+            from:{ uid:me.uid, nickname:me.nickname, gender:me.gender },
+            to:null, isPrivate:false,
+            text: t, emoji:[], mentions:[],
+            createdAt: serverTimestamp(), recalled:false, deleted:false
+          });
+        }
+        el.input.value = '';
+      }catch(e){
+        banner('err','发送失败：'+e.message);
+      }
     }
 
-    // 事件：按钮 + 回车
-    sendBtn.addEventListener('click', sendPublicMessage);
-    inputEl.addEventListener('keydown', e=>{
-      if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendPublicMessage(); }
+    // —— 事件 —— //
+    el.dmchk.addEventListener('change', e=>{ dmChecked = e.target.checked; setModeHint(); });
+    el.send.addEventListener('click', send);
+    el.input.addEventListener('keydown', (e)=>{
+      if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); }
     });
+    el.chips.forEach(c=>c.addEventListener('click', ()=>{
+      const at = c.dataset.at + ' ';
+      if(!el.input.value.startsWith(at)) el.input.value = at + el.input.value;
+      el.input.focus();
+    }));
 
-    // 启动：匿名登录 -> 创建 users 文档（不再写 nicknames，占用表先省略）-> 订阅公聊
-    try{
-      await signInAnonymously(auth);
-    }catch(e){ showErr('Authentication 错误：请在 Firebase 控制台启用 Anonymous 登录'); }
+    // —— 启动：匿名登录 + 创建/读取个人档案 —— //
+    signInAnonymously(auth).catch(e=>{
+      banner('err','匿名登录失败：'+e.message);
+    });
 
     onAuthStateChanged(auth, async (u)=>{
       if(!u) return;
@@ -128,22 +314,36 @@
         const uref = doc(db,'users', u.uid);
         const snap = await getDoc(uref);
         if(!snap.exists()){
-          // 直接创建用户文档（昵称随机），不写 nicknames 集合，以免规则/并发造成阻塞
-          const nickname = randNick();
+          // 首次：随机昵称 + 性别；并立即写入
           const gender = randGender();
+          const nickname = randNick();
+          // 占用昵称（若冲突则简单加尾号）
+          let ok = await ensureUniqueNickname(nickname).catch(()=>false);
+          let finalNick = nickname, tryN = 0;
+          while(!ok && tryN<3){
+            finalNick = nickname + (Math.floor(Math.random()*90+10));
+            ok = await ensureUniqueNickname(finalNick).catch(()=>false);
+            tryN++;
+          }
           await setDoc(uref, {
-            uid: u.uid, nickname, gender,
+            uid:u.uid, nickname: finalNick, gender,
             createdAt: serverTimestamp(), lastSeenAt: serverTimestamp(),
             roles: ['user'], blocked:false, mutedUntil:null
           });
-          me = { uid:u.uid, nickname, gender };
+          me = { uid:u.uid, nickname: finalNick, gender, roles:['user'] };
         }else{
           me = snap.data();
         }
-        meEl.textContent = `我：@${me.nickname}（${me.gender}） · 已登录`;
-        mountPublicMessages();
-      }catch(e){ showErr(e); }
+        renderMe(); renderSamples(); subscribeUsers(); subscribePublic();
+        setModeHint(); banner('ok','已登录并连接后端');
+      }catch(e){
+        banner('err','初始化失败：'+e.message);
+      }
     });
+
+    // —— 简单网络探测（遇到 Firebase 离线报错时给出横幅，并自动消隐） —— //
+    window.addEventListener('online', ()=>banner('ok','网络已恢复'));
+    window.addEventListener('offline', ()=>banner('err','网络不可用：请检查连接'));
   </script>
 </body>
 </html>
