@@ -4,36 +4,54 @@ service cloud.firestore {
 
     function isAuth() { return request.auth != null; }
 
-    function isAdmin() {
+    // 方案A：从用户档案 roles 里判断（常规做法）
+    function isAdminByRole() {
       return isAuth() &&
              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
              ("roles" in get(/databases/$(database)/documents/users/$(request.auth.uid)).data) &&
              ("admin" in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles);
     }
 
+    // 方案B：管理员白名单（无需专门“管理员登录”）
+    // 把你自己的 UID 填在数组里即可（可在页面状态栏或 Console 打印出当前 UID）。
+    function isAdminByAllowlist() {
+      return isAuth() &&
+        (request.auth.uid in [
+          // ===== 在此填入管理员 UID（字符串）=====
+          // 例子："hHkLr4...Abcd", "s7Q...xyz"
+        ]);
+    }
+
+    function isAdmin() { return isAdminByRole() || isAdminByAllowlist(); }
+
+    // 在线用户
     match /users/{uid} {
       allow read: if isAuth();
       allow create, update: if isAuth() && request.auth.uid == uid;
       allow delete: if false;
     }
 
+    // 昵称占用表（可选）
     match /nicknames/{name} {
       allow read: if true;
       allow create: if isAuth() && !exists(resource.path);
       allow update, delete: if false;
     }
 
+    // 公聊
     match /messages/{id} {
       allow read: if true;
       allow create: if isAuth();
       allow update, delete: if false;
     }
 
-    // 私聊：单层集合 /dm，文档需含 parties: [uidA, uidB]
+    // 私聊：单层集合 /dm，每条文档包含 parties:[uidA, uidB]
     match /dm/{mid} {
+      // 读：仅参与者或管理员
       allow read: if isAuth() &&
                   ((request.auth.uid in resource.data.parties) || isAdmin());
 
+      // 写：仅参与者；同时校验 parties 合法（两个不同 UID）
       allow create: if isAuth()
         && (request.resource.data.parties is list)
         && request.resource.data.parties.size() == 2
