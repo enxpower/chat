@@ -45,9 +45,7 @@
 </style>
 </head>
 <body>
-<header>
-  <div class="brand">中文聊天室 · 公聊 + 私聊（同屏高亮）</div>
-</header>
+<header><div class="brand">中文聊天室 · 公聊 + 私聊（同屏高亮）</div></header>
 <div id="status" class="status"><span class="dot"></span><span id="statusText">正在连接 Firebase…</span></div>
 
 <div class="wrap">
@@ -58,27 +56,40 @@
         <span>我：<strong id="meNick" class="unset">@guest</strong></span>
         <span id="meRole" class="tag">user</span>
       </div>
+
       <div class="row" style="gap:6px">
         <span class="tag">UID:</span>
         <input id="uidBox" class="ipt" style="flex:1;min-width:0" readonly />
         <button id="copyUid" class="btn">复制 UID</button>
       </div>
+
+      <!-- 管理员登录表单 -->
+      <div class="row" id="adminLoginRow">
+        <input id="adminEmail" class="ipt" placeholder="管理员邮箱" style="min-width:160px">
+        <input id="adminPass" class="ipt" type="password" placeholder="密码" style="min-width:120px">
+        <button class="btn" id="adminLoginBtn">登录</button>
+        <button class="btn" id="adminLogoutBtn">退出</button>
+      </div>
+
+      <!-- 管理员模式开关（仅管理员显示） -->
       <div id="adminBar" class="row" style="display:none">
         <label style="font-size:12px;color:#374151;display:flex;align-items:center;gap:6px">
           <input id="adminAll" type="checkbox"/>
           管理员模式：查看全部私聊（默认关闭）
         </label>
       </div>
+
+      <!-- 档案设置 -->
       <div class="row">
         <input id="nickInput" class="ipt" placeholder="昵称（唯一，可选）"/>
         <select id="genderInput" class="ipt" style="max-width:120px">
-          <option value="unset">未设置</option><option value="male">male</option><option value="female">female</option>
+          <option value="unset">未设置</option>
+          <option value="male">male</option>
+          <option value="female">female</option>
         </select>
         <button class="btn" id="saveProfile">保存</button>
       </div>
-      <div class="row">
-        <button class="btn" id="clearDM">清空私聊对象</button>
-      </div>
+      <div class="row"><button class="btn" id="clearDM">清空私聊对象</button></div>
     </div>
 
     <div class="grp">在线用户</div>
@@ -134,7 +145,7 @@
 
   // ===== Firebase SDK =====
   import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-  import { getAuth, signInAnonymously, onAuthStateChanged, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
   import { getFirestore, serverTimestamp, doc, getDoc, setDoc, addDoc, collection, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
   const app = initializeApp(cfg); const auth = getAuth(app); const db = getFirestore(app);
 
@@ -146,7 +157,8 @@
     input:$('input'), send:$('send'), dmchk:$('dmchk'), sendto:$('sendto'),
     meNick:$('meNick'), meRole:$('meRole'), nickInput:$('nickInput'), genderInput:$('genderInput'),
     saveProfile:$('saveProfile'), clearDM:$('clearDM'),
-    uidBox:$('uidBox'), copyUid:$('copyUid'), adminBar:$('adminBar'), adminAll:$('adminAll')
+    uidBox:$('uidBox'), copyUid:$('copyUid'), adminBar:$('adminBar'), adminAll:$('adminAll'),
+    adminEmail:$('adminEmail'), adminPass:$('adminPass'), adminLoginBtn:$('adminLoginBtn'), adminLogoutBtn:$('adminLogoutBtn')
   };
 
   // ===== 状态 =====
@@ -236,22 +248,48 @@
   el.clearDM.onclick=()=>{ dmTarget=null; el.dmchk.checked=false; updateSendTo(); };
   document.querySelectorAll('[data-at]').forEach(c=> c.addEventListener('click',()=>{ const at=c.getAttribute('data-at')+' '; if(!el.input.value.startsWith(at)) el.input.value=at+el.input.value; el.input.focus(); }));
 
+  // ===== 管理员登录 / 退出 =====
+  el.adminLoginBtn.onclick = async () => {
+    const email = (el.adminEmail.value||'').trim();
+    const pass  = el.adminPass.value||'';
+    if(!email || !pass){ setStatus('err','请输入邮箱与密码'); return; }
+    try{
+      await signInWithEmailAndPassword(auth, email, pass);
+      setStatus('ok','管理员登录成功',1200);
+    }catch(e){ setStatus('err','登录失败：'+(e.message||e)); }
+  };
+  el.adminLogoutBtn.onclick = async () => {
+    try{ await signOut(auth); setStatus('ok','已退出登录',1200); }
+    catch(e){ setStatus('err','退出失败：'+(e.message||e)); }
+  };
+
   // ===== 登录 & 初始化 =====
   signInAnonymously(auth).catch(e=> setStatus('err','匿名登录失败：'+e.message));
+
   onAuthStateChanged(auth, async (u)=>{
     if(!u) return;
     me.uid=u.uid;
 
-    // 我的 UID & 角色显示
+    // 显示 UID
     el.uidBox.value = me.uid;
-    $('copyUid').onclick = ()=>{ navigator.clipboard.writeText(me.uid).then(()=>{$('copyUid').textContent='已复制'; setTimeout(()=>$('copyUid').textContent='复制 UID',1200);}); };
+    el.copyUid.onclick = ()=>{ navigator.clipboard.writeText(me.uid).then(()=>{el.copyUid.textContent='已复制'; setTimeout(()=>el.copyUid.textContent='复制 UID',1200);}); };
 
-    // 默认昵称 + 写入 /users（★ 必含 uid）
-    const males=['阿强','建国','一鸣','子轩','志远','浩然']; const females=['美琳','可欣','语桐','嘉怡','若兰','欣怡']; const rnd=a=>a[Math.floor(Math.random()*a.length)];
-    let gender=Math.random()<.5?'male':'female'; let base=(gender==='male'?rnd(males):rnd(females))+Math.floor(Math.random()*90+10);
-    const finalNick=await claimNicknameAuto(base, me.uid);
-    await setDoc(doc(db,'users',me.uid), { uid:me.uid, nickname:finalNick, gender, createdAt:serverTimestamp(), lastSeenAt:serverTimestamp(), roles:['user'], blocked:false }, {merge:true});
-    me.nickname=finalNick; me.gender=gender; el.meNick.textContent='@'+me.nickname; el.meNick.className=gcls(me.gender); el.meRole.textContent='user';
+    // 读取/创建用户档案：若已有则用已有；若无则创建默认
+    const userRef = doc(db,'users',me.uid);
+    const snap = await getDoc(userRef);
+    if (snap.exists()) {
+      const d = snap.data();
+      me.nickname = d.nickname || me.nickname;
+      me.gender   = d.gender   || me.gender;
+    } else {
+      const males=['阿强','建国','一鸣','子轩','志远','浩然']; const females=['美琳','可欣','语桐','嘉怡','若兰','欣怡']; const rnd=a=>a[Math.floor(Math.random()*a.length)];
+      let gender=Math.random()<.5?'male':'female'; let base=(gender==='male'?rnd(males):rnd(females))+Math.floor(Math.random()*90+10);
+      const finalNick=await claimNicknameAuto(base, me.uid);
+      await setDoc(userRef, { uid:me.uid, nickname:finalNick, gender, createdAt:serverTimestamp(), lastSeenAt:serverTimestamp(), roles:['user'], blocked:false }, {merge:true});
+      me.nickname=finalNick; me.gender=gender;
+    }
+    // 渲染“我”
+    el.meNick.textContent='@'+me.nickname; el.meNick.className=gcls(me.gender); el.meRole.textContent='user';
     renderSamples(); updateSendTo();
 
     // 订阅管理员白名单，判断是否管理员
@@ -284,8 +322,7 @@
       }
     }
     el.adminAll?.addEventListener('change', ()=>{ if(!amAdmin){ el.adminAll.checked=false; return;} subDm(); });
-    // 初始订阅
-    subDm();
+    subDm(); // 初始订阅
 
     // 在线用户（★ uid 用 doc.id 覆盖）
     onSnapshot(query(collection(db,'users'), orderBy('createdAt','asc')), s=>{
@@ -297,6 +334,17 @@
 
   window.addEventListener('online', ()=>setStatus('ok','网络已恢复',1200));
   window.addEventListener('offline', ()=>setStatus('err','网络不可用'));
+
+  // 保存档案
+  $('saveProfile').onclick = async ()=>{
+    const desired=el.nickInput.value.trim(); const gender=el.genderInput.value||'unset';
+    let finalName=me.nickname;
+    if(desired && desired!==me.nickname) finalName=await claimNicknameAuto(desired, me.uid);
+    try{
+      await setDoc(doc(db,'users',me.uid), { uid:me.uid, nickname:finalName, gender, lastSeenAt:serverTimestamp(), roles:me.roles||['user'], blocked:false }, {merge:true});
+      me.nickname=finalName; me.gender=gender; el.meNick.textContent='@'+me.nickname; el.meNick.className=gcls(me.gender);
+    }catch(_){}
+  };
 </script>
 </body>
 </html>
