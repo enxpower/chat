@@ -52,7 +52,6 @@
 </head>
 <body>
 <header><div class="brand">中文聊天室 · 公聊 + 私聊（同屏高亮）</div></header>
-<!-- 状态条常驻，不再自动隐藏 -->
 <div id="status" class="status"><span class="dot"></span><span id="statusText">正在连接 Firebase…</span></div>
 
 <div class="wrap">
@@ -64,7 +63,7 @@
         <span id="meRole" class="tag">user</span>
       </div>
 
-      <!-- 管理员登录（登录后自动隐藏邮箱/密码/登录，只留退出） -->
+      <!-- 管理员登录（登录后隐藏；只留退出） -->
       <div class="row" id="adminLoginRow">
         <input id="adminEmail" class="ipt" placeholder="管理员邮箱" style="min-width:160px">
         <input id="adminPass" class="ipt" type="password" placeholder="密码" style="min-width:120px">
@@ -103,7 +102,7 @@
     <div id="mode" class="mode">频道：#general（私聊同屏高亮，仅双方可见）</div>
     <div id="msgs" class="msgs"></div>
 
-    <!-- 1) “将发送到：…” 移到输入框正上方 -->
+    <!-- 将发送到： 放在输入框上方 -->
     <div id="sendto" class="sendto">将发送到：<strong>公屏</strong></div>
 
     <div class="row" style="color:#6b7280;font-size:12px">
@@ -117,7 +116,7 @@
       <button id="send" class="btn primary">发送</button>
     </div>
 
-    <!-- 4) 仅保留 @管理员 按钮（名称与颜色跟随白名单管理员） -->
+    <!-- 仅保留 @管理员 快捷按钮（名字动态使用白名单管理员；管理员名称有专属颜色） -->
     <div class="chips">
       <span class="chip" id="chipAdmin">@管理员</span>
     </div>
@@ -125,7 +124,7 @@
 </div>
 
 <script type="module">
-  // ===== 状态条（常驻） =====
+  // ===== 常驻状态条 =====
   const $ = id => document.getElementById(id);
   const statusText = $('statusText');
   const setStatus = (kind, text)=>{ const bar=document.getElementById('status'); bar.className='status '+(kind||''); statusText.textContent=text||''; bar.style.display='flex'; };
@@ -149,6 +148,16 @@
 
   window.addEventListener('unhandledrejection', ev=> setStatus('err','运行错误：'+(ev.reason?.message||ev.reason||'Unknown')));
 
+  // ===== 配置：虚拟在线用户（女性） =====
+  // 在这里增删即可。uid 以 v_ 开头，避免与真实用户冲突。
+  const VIRTUAL_USERS = [
+    { uid:'v_f01', nickname:'美琳33', gender:'female' },
+    { uid:'v_f02', nickname:'语桐27', gender:'female' },
+    { uid:'v_f03', nickname:'嘉怡45', gender:'female' },
+    { uid:'v_f04', nickname:'若兰29', gender:'female' },
+    { uid:'v_f05', nickname:'欣怡38', gender:'female' }
+  ];
+
   // ===== DOM refs =====
   const el = {
     users:$('users'), msgs:$('msgs'),
@@ -165,13 +174,14 @@
   let me={ uid:null, nickname:'guest', gender:'unset', roles:['user'] };
   let dmTarget=null;
   let amAdmin=false;
-  let adminUIDs=[];      // 白名单里的所有管理员 UID
-  let adminDisplay = { uid:null, nickname:'管理员' }; // 用于 @管理员 快捷与着色
+  let adminUIDs=[];                        // 白名单管理员 UID 列表
+  let adminDisplay = { uid:null, nickname:'管理员' }; // 用于 @管理员 快捷按钮
   let unsubDm=null;
 
   // 颜色类：管理员 > 性别 > 未设
   const nameClass=(uid, gender)=>{
     if (adminUIDs.includes(uid)) return 'adminname';
+    if ((uid||'').startsWith('v_')) return 'female'; // 虚拟女性统一按女性色
     return gender==='male'?'male':(gender==='female'?'female':'unset');
   };
 
@@ -195,14 +205,24 @@
     const s=document.createElement('span'); s.className='pill '+nameClass(u.uid,u.gender);
     s.dataset.uid=u.uid||''; s.dataset.nick=u.nickname||'';
     const isadm = adminUIDs.includes(u.uid);
-    s.innerHTML=`<strong>@${u.nickname||'未知'}</strong> ${isadm?'<span class="badge">admin</span>':''}`;
+    
+    s.innerHTML=`<strong>@${u.nickname||'未知'}</strong> ${isadm?'<span class="badge">admin</span>':(isvir?'<span class="badge">虚拟</span>':'')}`;
     s.addEventListener('click',onPillClick); return s;
   };
-  function renderUsers(list){
+  function renderUsers(realList){
+    // 合并：虚拟 + 真实；按 uid 去重（优先真实）
+    const map=new Map();
+    // 先放虚拟
+    VIRTUAL_USERS.forEach(v=> map.set(v.uid, v));
+    // 再放真实（覆盖虚拟）
+    realList.forEach(r=> map.set(r.uid||r.id, {...r, uid:(r.uid||r.id)}));
+    const merged=[...map.values()];
+
     el.users.innerHTML='';
-    list.forEach(u=> el.users.appendChild(pill(u)));
-    // 设置 @管理员 快捷按钮文案（取第一位白名单在册用户）
-    const found = list.find(u=>adminUIDs.includes(u.uid));
+    merged.forEach(u=> el.users.appendChild(pill(u)));
+
+    // 设置 @管理员 按钮文案（取在线的真实管理员，否则保持“管理员”）
+    const found = realList.find(u=>adminUIDs.includes(u.uid||u.id));
     adminDisplay.uid = found?.uid || adminUIDs[0] || null;
     adminDisplay.nickname = found?.nickname || '管理员';
     el.chipAdmin.textContent = '@'+adminDisplay.nickname;
@@ -306,8 +326,7 @@
       amAdmin = adminUIDs.includes(me.uid);
       el.meRole.textContent = amAdmin ? 'admin' : 'user';
       el.adminBar.style.display = amAdmin ? 'flex' : 'none';
-
-      // 如果当前用户是白名单管理员且不是匿名登录：隐藏登录行，显示退出行
+      // 登录行隐藏/退出行显示：要求“是白名单管理员且以密码方式登录”
       const isPassword = (auth.currentUser?.providerData||[]).some(p=>p.providerId==='password');
       el.adminLoginRow.style.display = (amAdmin && isPassword) ? 'none' : 'flex';
       el.adminLogoutRow.style.display = (amAdmin && isPassword) ? 'flex' : 'none';
@@ -337,7 +356,7 @@
     el.adminAll?.addEventListener('change', ()=>{ if(!amAdmin){ el.adminAll.checked=false; return;} subDm(); });
     subDm();
 
-    // 在线用户（uid 用 doc.id 覆盖）
+    // 在线用户（真实）
     onSnapshot(query(collection(db,'users'), orderBy('createdAt','asc')), s=>{
       const arr=[]; s.forEach(d=> arr.push({ ...d.data(), uid:d.id })); renderUsers(arr);
     });
