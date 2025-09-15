@@ -205,7 +205,7 @@
     const s=document.createElement('span'); s.className='pill '+nameClass(u.uid,u.gender);
     s.dataset.uid=u.uid||''; s.dataset.nick=u.nickname||'';
     const isadm = adminUIDs.includes(u.uid);
-    
+    const isvir = (u.uid||'').startsWith('v_');
     s.innerHTML=`<strong>@${u.nickname||'未知'}</strong> ${isadm?'<span class="badge">admin</span>':(isvir?'<span class="badge">虚拟</span>':'')}`;
     s.addEventListener('click',onPillClick); return s;
   };
